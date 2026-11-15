@@ -1,8 +1,12 @@
 import * as storage from './storage.js';
 import { hoyISO } from './fechas.js';
 
+export const DNI_DE_PRUEBA = Object.freeze(['11111111', '22222222', '33333333']);
+export const REGISTRO_HABILITADO = false;
+
 const LONGITUD_DNI = 8;
 const LONGITUD_MINIMA_CONTRASENA = 8;
+const ERROR_DNI_NO_HABILITADO = `DNI no habilitado. Para las pruebas usa ${DNI_DE_PRUEBA.join(', ')}.`;
 const ERROR_CREDENCIALES = 'Las credenciales no son correctas.';
 
 export class ErrorDeAcceso extends Error {
@@ -14,7 +18,7 @@ export class ErrorDeAcceso extends Error {
 }
 
 export function esDniValido(dni) {
-  return new RegExp(`^\d{${LONGITUD_DNI}}$`).test(dni);
+  return /^\d+$/.test(dni) && dni.length === LONGITUD_DNI;
 }
 
 export function validarContrasena(contrasena) {
@@ -34,10 +38,9 @@ function buscarCuenta(identificador, grupo) {
     const paciente = storage.buscar('pacientes', (item) => item.dni === identificador);
     return paciente && { registro: paciente, rol: 'paciente' };
   }
-  const id = identificador.toUpperCase();
   const candidatos = [{ coleccion: 'medicos', rol: 'medico' }, { coleccion: 'administradores', rol: 'administrador' }];
   for (const { coleccion, rol } of candidatos) {
-    const registro = storage.buscar(coleccion, (item) => item.id === id || item.dni === identificador);
+    const registro = storage.buscar(coleccion, (item) => item.dni === identificador);
     if (registro) return { registro, rol };
   }
   return null;
@@ -54,10 +57,8 @@ function abrirSesion(rol, usuarioId) {
 }
 
 export async function iniciarSesion({ identificador, contrasena, grupo }) {
-  if (grupo === 'paciente' && !esDniValido(identificador)) {
-    throw new ErrorDeAcceso(`El DNI debe tener ${LONGITUD_DNI} dígitos.`, 'identificador');
-  }
-  if (grupo !== 'paciente' && !identificador) throw new ErrorDeAcceso('Ingresa tu ID de usuario.', 'identificador');
+  if (!esDniValido(identificador)) throw new ErrorDeAcceso(`El DNI debe tener ${LONGITUD_DNI} dígitos.`, 'identificador');
+  if (!DNI_DE_PRUEBA.includes(identificador)) throw new ErrorDeAcceso(ERROR_DNI_NO_HABILITADO, 'identificador');
   if (!contrasena) throw new ErrorDeAcceso('Ingresa tu contraseña.', 'contrasena');
 
   const cuenta = buscarCuenta(identificador, grupo);
@@ -90,6 +91,7 @@ export async function registrarPaciente(datos) {
   const errores = validarDatosDeRegistro(datos);
   const [primerCampo] = Object.keys(errores);
   if (primerCampo) throw new ErrorDeAcceso(errores[primerCampo], primerCampo);
+  if (!DNI_DE_PRUEBA.includes(datos.dni)) throw new ErrorDeAcceso(ERROR_DNI_NO_HABILITADO, 'dni');
   if (existeDniRegistrado(datos.dni)) {
     throw new ErrorDeAcceso('Este DNI ya tiene una cuenta. Inicia sesión.', 'dni');
   }

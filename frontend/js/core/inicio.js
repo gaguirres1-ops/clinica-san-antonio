@@ -6,23 +6,30 @@ import {
   esCitaFutura,
   listarCitas,
   listarMedicos,
-  proximaFechaDisponible,
 } from './dominio.js';
-import { esFuturo, formatearDiaCorto, hoyISO, sumarDias } from './fechas.js';
+import { esFuturo, formatearFecha, hoyISO, sumarDias } from './fechas.js';
 import { construirHash } from './navigation.js';
 import {
   escaparHtml,
   formatearMoneda,
   icono,
-  renderizarAvatar,
+  insigniaEstado,
+  renderizarAvatarMedico,
   renderizarEncabezado,
   renderizarListaCitas,
   renderizarVacio,
 } from './ui.js';
 
 const LIMITE_FILAS = 6;
-const LIMITE_MEDICOS_DISPONIBLES = 6;
-const RUTA_FOTO_EQUIPO = 'img/equipo-medico.jpg';
+const LIMITE_MIS_CITAS = 8;
+const TODAS_LAS_ESPECIALIDADES = '';
+
+const SERVICIOS = [
+  { icono: 'calendarioMas', titulo: 'Citas en línea', detalle: 'Agenda tu consulta en minutos.' },
+  { icono: 'usuarios', titulo: 'Especialistas', detalle: 'Médicos altamente calificados.' },
+  { icono: 'dinero', titulo: 'Pago seguro', detalle: 'Diversos métodos de pago.' },
+  { icono: 'campana', titulo: 'Notificaciones', detalle: 'Recibe recordatorios de tus citas.' },
+];
 
 function renderizarIndicador({ iconoIndicador, etiqueta, valor, variante = '' }) {
   return `
@@ -45,97 +52,105 @@ function renderizarSeccionCitas({ titulo, citas, mostrar, vacio }) {
     </section>`;
 }
 
-function primerNombre(nombreCompleto) {
-  return nombreCompleto.replace(/^(Dr|Dra)\.\s+/i, '').split(' ')[0];
-}
-
-function listarMedicosConDisponibilidad() {
-  return listarMedicos()
-    .map((medico) => ({ medico, proximaFecha: proximaFechaDisponible(medico.id) }))
-    .filter(({ proximaFecha }) => proximaFecha)
-    .sort((a, b) => a.proximaFecha.localeCompare(b.proximaFecha) || a.medico.nombre.localeCompare(b.medico.nombre))
-    .slice(0, LIMITE_MEDICOS_DISPONIBLES);
-}
-
-function renderizarTarjetaMedico({ medico, proximaFecha }, { rutaDestino, textoDestino }) {
+function renderizarFiltros(especialidades, filtroActivo) {
+  const opciones = [TODAS_LAS_ESPECIALIDADES, ...especialidades];
   return `
-    <li>
-      <a class="medico-disponible" href="${construirHash(rutaDestino, { medico: medico.id })}">
-        ${renderizarAvatar(medico.nombre, 'grande')}
-        <span class="medico-disponible__info">
-          <small>${escaparHtml(medico.especialidad?.nombre ?? '')}</small>
-          <strong>${escaparHtml(medico.nombre)}</strong>
-          <span class="medico-disponible__fecha">${icono('calendario')}${escaparHtml(formatearDiaCorto(proximaFecha))}</span>
-        </span>
-        <span class="medico-disponible__accion">${escaparHtml(textoDestino)}${icono('flechaDerecha')}</span>
-      </a>
-    </li>`;
+    <div class="filtros" role="group" aria-label="Filtrar por especialidad">
+      ${opciones.map((nombre) => `<button class="filtro" type="button" data-filtro="${escaparHtml(nombre)}" aria-pressed="${nombre === filtroActivo}">${escaparHtml(nombre || 'Todos')}</button>`).join('')}
+    </div>`;
 }
 
-function renderizarMedicosDisponibles(destino) {
-  const medicos = listarMedicosConDisponibilidad();
-  if (!medicos.length) return '';
+function renderizarTarjetaMedico(medico, destino) {
   return `
-    <section class="panel medicos-disponibles" aria-labelledby="tituloMedicosDisponibles">
-      <header class="panel__cabecera">
-        <h2 class="panel__titulo" id="tituloMedicosDisponibles">Médicos disponibles</h2>
+    <article class="tarjeta-especialista">
+      <div class="tarjeta-especialista__foto">${renderizarAvatarMedico(medico, 'completo')}</div>
+      <div class="tarjeta-especialista__cuerpo">
+        <span class="tarjeta-especialista__especialidad">${escaparHtml(medico.especialidad?.nombre ?? '')}</span>
+        <h3 class="tarjeta-especialista__nombre">${escaparHtml(medico.nombre)}</h3>
+        <span class="tarjeta-especialista__cmp">CMP ${escaparHtml(medico.cmp)}</span>
+        <div class="tarjeta-especialista__pie">
+          <div class="tarjeta-especialista__precio"><small>Consulta</small><b>${escaparHtml(formatearMoneda(medico.tarifa))}</b></div>
+          <a class="boton boton--suave boton--pequeno" href="${construirHash(destino.ruta, { medico: medico.id })}">${escaparHtml(destino.texto)}${icono('calendario')}</a>
+        </div>
+      </div>
+    </article>`;
+}
+
+function renderizarEspecialistas(filtroActivo, destino) {
+  const medicos = listarMedicos();
+  const especialidades = [...new Set(medicos.map((medico) => medico.especialidad?.nombre).filter(Boolean))];
+  const visibles = medicos.filter((medico) => !filtroActivo || medico.especialidad?.nombre === filtroActivo);
+  return `
+    <section class="especialistas" id="especialistas" aria-labelledby="tituloEspecialistas">
+      <header class="bloque__cabecera">
+        <h2 class="bloque__titulo" id="tituloEspecialistas">Nuestros especialistas</h2>
+        ${renderizarFiltros(especialidades, filtroActivo)}
       </header>
-      <figure class="medicos-disponibles__equipo">
-        <img src="${RUTA_FOTO_EQUIPO}" alt="Equipo médico de la Clínica San Antonio" width="1672" height="941" loading="lazy">
-      </figure>
-      <ul class="medicos-disponibles__lista">
-        ${medicos.map((item) => renderizarTarjetaMedico(item, destino)).join('')}
+      <div class="especialistas__rejilla">${visibles.map((medico) => renderizarTarjetaMedico(medico, destino)).join('')}</div>
+    </section>`;
+}
+
+function renderizarPortadaPaciente() {
+  return `
+    <section class="portada" aria-labelledby="tituloPortada">
+      <div class="portada__texto">
+        <span class="portada__etiqueta">Cuidamos tu salud</span>
+        <h1 class="portada__titulo" id="tituloPortada">Tu salud,<br><span>nuestra prioridad</span></h1>
+        <p class="portada__lema">Agenda tu cita médica de forma rápida, segura y desde donde estés.</p>
+        <div class="portada__acciones">
+          <a class="boton boton--primario" href="${construirHash('reservar-cita')}">${icono('calendario')}Reservar cita${icono('flechaDerecha')}</a>
+          <button class="boton boton--secundario" type="button" data-accion="ver-especialistas">${icono('estetoscopio')}Ver especialistas</button>
+        </div>
+      </div>
+      <div class="portada__foto" role="img" aria-label="Médica sonriendo frente a la fachada de la Clínica San Antonio"></div>
+    </section>
+    <section class="servicios" aria-label="Servicios">
+      ${SERVICIOS.map((servicio) => `
+        <article class="servicio">
+          <span class="servicio__icono">${icono(servicio.icono)}</span>
+          <h3>${escaparHtml(servicio.titulo)}</h3>
+          <p>${escaparHtml(servicio.detalle)}</p>
+        </article>`).join('')}
+    </section>`;
+}
+
+function renderizarMisCitas(citas) {
+  if (!citas.length) {
+    return `
+      <section class="panel mis-citas">
+        <header class="panel__cabecera"><h2 class="panel__titulo">Mis citas</h2></header>
+        ${renderizarVacio({ titulo: 'Aún no tienes citas registradas', accion: `<a class="boton boton--primario boton--pequeno" href="${construirHash('reservar-cita')}">Registrar cita</a>` })}
+      </section>`;
+  }
+  return `
+    <section class="panel mis-citas" aria-labelledby="tituloMisCitas">
+      <header class="panel__cabecera">
+        <h2 class="panel__titulo" id="tituloMisCitas">Mis citas</h2>
+        <a class="boton boton--primario boton--pequeno" href="${construirHash('reservar-cita')}">${icono('calendarioMas')}Nueva cita</a>
+      </header>
+      <ul class="mis-citas__lista">
+        ${citas.slice(0, LIMITE_MIS_CITAS).map((cita) => `
+          <li>
+            <a class="mis-citas__fila" href="${construirHash('detalle-cita', { id: cita.id })}">
+              ${renderizarAvatarMedico(cita.medico, 'lista')}
+              <span class="mis-citas__info">
+                <strong>${escaparHtml(cita.medico?.nombre ?? '')}</strong>
+                <small>${escaparHtml(cita.medico?.especialidad?.nombre ?? '')} · <span class="codigo">${escaparHtml(cita.id)}</span></small>
+              </span>
+              <span class="mis-citas__fecha">${icono('calendario')}${escaparHtml(formatearFecha(cita.fecha))} · ${escaparHtml(cita.hora)}</span>
+              ${insigniaEstado(cita.estado)}
+            </a>
+          </li>`).join('')}
       </ul>
     </section>`;
 }
 
-function renderizarPortadaPaciente({ usuario, siguiente }) {
-  const enlaceSiguiente = siguiente
-    ? `<a class="boton boton--portada" href="${construirHash('detalle-cita', { id: siguiente.id })}">${icono('calendario')}Mi próxima cita · ${escaparHtml(formatearDiaCorto(siguiente.fecha))}</a>`
-    : '';
+function renderizarInicioPaciente({ usuario }, filtroActivo) {
+  const citas = listarCitas((cita) => cita.pacienteId === usuario.id && cita.estado !== ESTADOS_CITA.CANCELADA);
   return `
-    <section class="portada" aria-labelledby="tituloPortada">
-      <div class="portada__texto">
-        <h1 class="portada__titulo" id="tituloPortada">Hola, ${escaparHtml(primerNombre(usuario.nombre))}</h1>
-        <p class="portada__lema">Tu salud, <strong>nuestra prioridad</strong></p>
-        <div class="portada__acciones">
-          <a class="boton boton--claro" href="${construirHash('reservar-cita')}">${icono('calendarioMas')}Reservar cita</a>
-          ${enlaceSiguiente}
-        </div>
-      </div>
-    </section>`;
-}
-
-function renderizarInicioPaciente({ usuario }) {
-  const citasDelPaciente = listarCitas((cita) => cita.pacienteId === usuario.id);
-  const proximas = citasDelPaciente.filter((cita) => esCitaActiva(cita) && esCitaFutura(cita));
-  const anteriores = citasDelPaciente.filter((cita) => !proximas.includes(cita)).reverse();
-  const pendientesDePago = proximas.filter((cita) => cita.estado === ESTADOS_CITA.PENDIENTE_PAGO);
-  const montoPendiente = pendientesDePago.reduce((total, cita) => total + (cita.pago?.monto ?? 0), 0);
-  const atenciones = citasDelPaciente.filter((cita) => cita.estado === ESTADOS_CITA.ATENDIDA).length;
-
-  return `
-    ${renderizarPortadaPaciente({ usuario, siguiente: proximas[0] })}
-    <div class="indicadores indicadores--tres">
-      ${renderizarIndicador({ iconoIndicador: 'calendario', etiqueta: 'Citas programadas', valor: String(proximas.length) })}
-      ${renderizarIndicador({ iconoIndicador: 'dinero', etiqueta: 'Pagos pendientes', valor: formatearMoneda(montoPendiente), variante: pendientesDePago.length ? 'alerta' : '' })}
-      ${renderizarIndicador({ iconoIndicador: 'diagnostico', etiqueta: 'Atenciones', valor: String(atenciones) })}
-    </div>
-    <div class="rejilla-inicio">
-      ${renderizarSeccionCitas({
-        titulo: 'Próximas citas',
-        citas: proximas,
-        mostrar: 'medico',
-        vacio: { titulo: 'No tienes citas programadas' },
-      })}
-      ${renderizarSeccionCitas({
-        titulo: 'Historial de citas',
-        citas: anteriores,
-        mostrar: 'medico',
-        vacio: { iconoVacio: 'documento', titulo: 'Aún no tienes atenciones registradas' },
-      })}
-    </div>
-    ${renderizarMedicosDisponibles({ rutaDestino: 'reservar-cita', textoDestino: 'Reservar' })}`;
+    ${renderizarPortadaPaciente()}
+    ${renderizarEspecialistas(filtroActivo, { ruta: 'reservar-cita', texto: 'Reservar' })}
+    ${renderizarMisCitas(citas)}`;
 }
 
 function renderizarInicioMedico({ usuario }) {
@@ -176,7 +191,7 @@ function renderizarInicioMedico({ usuario }) {
     </div>`;
 }
 
-function renderizarInicioAdministrador() {
+function renderizarInicioAdministrador(_contexto, filtroActivo) {
   const hoy = hoyISO();
   const activasFuturas = listarCitas((cita) => esCitaActiva(cita) && esFuturo(cita.fecha, cita.hora));
   const pendientesDePago = activasFuturas.filter((cita) => cita.estado === ESTADOS_CITA.PENDIENTE_PAGO);
@@ -207,7 +222,7 @@ function renderizarInicioAdministrador() {
         vacio: { iconoVacio: 'pulso', titulo: 'Sin actividad registrada' },
       })}
     </div>
-    ${renderizarMedicosDisponibles({ rutaDestino: 'gestionar-agenda', textoDestino: 'Agenda' })}`;
+    ${renderizarEspecialistas(filtroActivo, { ruta: 'gestionar-agenda', texto: 'Agenda' })}`;
 }
 
 const VISTAS_POR_ROL = {
@@ -223,9 +238,24 @@ export default {
   roles: ['paciente', 'medico', 'administrador'],
   seccion: 'General',
   montar(contenedor, contexto) {
+    let filtroActivo = TODAS_LAS_ESPECIALIDADES;
     const renderizar = () => {
-      contenedor.innerHTML = VISTAS_POR_ROL[contexto.rol](contexto);
+      contenedor.innerHTML = VISTAS_POR_ROL[contexto.rol](contexto, filtroActivo);
     };
+
+    contenedor.addEventListener('click', (evento) => {
+      const filtro = evento.target.closest('[data-filtro]');
+      if (filtro) {
+        filtroActivo = filtro.dataset.filtro;
+        renderizar();
+        contenedor.querySelector(`[data-filtro="${CSS.escape(filtroActivo)}"]`)?.focus();
+        return;
+      }
+      if (evento.target.closest('[data-accion="ver-especialistas"]')) {
+        contenedor.querySelector('#especialistas')?.scrollIntoView({ behavior: 'smooth' });
+      }
+    });
+
     renderizar();
     return storage.suscribir(renderizar);
   },

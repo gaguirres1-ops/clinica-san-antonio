@@ -40,7 +40,7 @@ import {
   insigniaEstado,
   mostrarToast,
   renderizarAviso,
-  renderizarAvatar,
+  renderizarAvatarMedico,
   renderizarEncabezado,
   renderizarStepper,
   renderizarVacio,
@@ -187,7 +187,7 @@ function renderizarTarjetaMedico(medico, seleccionado) {
   return `
     <button class="tarjeta-medico${seleccionado ? ' tarjeta-medico--seleccionada' : ''}" type="button"
       data-accion="elegir-medico" data-id="${escaparHtml(medico.id)}" aria-pressed="${seleccionado}" ${proximaFecha ? '' : 'disabled'}>
-      ${renderizarAvatar(medico.nombre, 'grande')}
+      ${renderizarAvatarMedico(medico, 'grande')}
       <span class="tarjeta-medico__cuerpo">
         <span class="tarjeta-medico__especialidad">${escaparHtml(medico.especialidad?.nombre ?? '')}</span>
         <strong class="tarjeta-medico__nombre">${escaparHtml(medico.nombre)}</strong>
@@ -233,7 +233,7 @@ function renderizarPasoMedico(estado) {
 function renderizarMedicoElegido(medico) {
   return `
     <div class="medico-elegido">
-      ${renderizarAvatar(medico.nombre)}
+      ${renderizarAvatarMedico(medico, 'tarjeta')}
       <div class="medico-elegido__texto">
         <strong>${escaparHtml(medico.nombre)}</strong>
         <small>${escaparHtml(medico.especialidad?.nombre ?? '')} · ${escaparHtml(medico.consultorio)}</small>
@@ -400,7 +400,7 @@ function renderizarResumen(estado, medico) {
   const horario = estado.horarioId ? storage.obtenerPorId('horarios', estado.horarioId) : null;
   const pendiente = '<span class="lista-datos__pendiente">Por seleccionar</span>';
   const cabecera = medico
-    ? `<div class="resumen__medico">${renderizarAvatar(medico.nombre)}<div><strong>${escaparHtml(medico.nombre)}</strong><small>${escaparHtml(medico.especialidad?.nombre ?? '')}</small></div></div>`
+    ? `<div class="resumen__medico">${renderizarAvatarMedico(medico, 'tarjeta')}<div><strong>${escaparHtml(medico.nombre)}</strong><small>${escaparHtml(medico.especialidad?.nombre ?? '')}</small></div></div>`
     : `<div class="resumen__medico resumen__medico--vacio"><span class="avatar">${icono('estetoscopio')}</span><p>Elige un médico para comenzar.</p></div>`;
   return `
     <aside class="panel resumen" aria-label="Resumen de la cita">

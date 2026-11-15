@@ -1,5 +1,6 @@
 import { construirHash } from './navigation.js';
 import { formatearFecha, partesDeFecha } from './fechas.js';
+import { dibujarAvatarMedico } from './avatares.js';
 
 const ICONOS = {
   inicio: '<path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.5V21h14V9.5"/><path d="M9.5 21v-6h5v6"/>',
@@ -86,6 +87,10 @@ export function obtenerIniciales(nombre = '') {
 
 export function renderizarAvatar(nombre, modificador = '') {
   return `<span class="avatar${modificador ? ` avatar--${modificador}` : ''}" aria-hidden="true">${escaparHtml(obtenerIniciales(nombre))}</span>`;
+}
+
+export function renderizarAvatarMedico(medico, modificador = '') {
+  return `<span class="avatar-medico${modificador ? ` avatar-medico--${modificador}` : ''}" aria-hidden="true">${dibujarAvatarMedico(medico?.id)}</span>`;
 }
 
 export function insigniaEstado(estado) {

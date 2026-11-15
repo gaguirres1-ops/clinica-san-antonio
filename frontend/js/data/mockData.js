@@ -10,7 +10,7 @@ import {
   sumarMinutos,
 } from '../core/fechas.js';
 
-export const VERSION_DATOS = 4;
+export const VERSION_DATOS = 6;
 
 const PACIENTE_PRINCIPAL_ID = 'PAC-001';
 
@@ -33,7 +33,7 @@ const ESPECIALIDADES = [
 
 const MEDICOS = [
   {
-    id: 'MED-001', dni: '08154236', credencial: 'be960853e20aa3657309287209fe45c708935f64bb96bafb4c076f03e17b2c08', nombre: 'Dr. Carlos Mendoza Ríos', especialidadId: 'ESP-002', cmp: '045821', rne: '23104',
+    id: 'MED-001', dni: '22222222', credencial: 'd1be6ac2a31d86986a46b1cfe0c392c938ed110f80e01ba42d0328263d2c7a36', nombre: 'Dr. Carlos Mendoza Ríos', especialidadId: 'ESP-002', cmp: '045821', rne: '23104',
     tarifa: 150, consultorio: 'Consultorio 204 · Piso 2', activo: true,
     jornada: { dias: [1, 3, 5], bloques: [['08:00', '12:00']], duracionMinutos: 30 },
   },
@@ -80,18 +80,18 @@ const MEDICOS = [
 ];
 
 const PACIENTES = [
-  { id: 'PAC-001', nombre: 'María Fernanda Quispe Huamán', dni: '72845163', credencial: 'e24bb1069562c7289e9e8683e1b71995b7c04d5bd1004ef71ced26b348954ba3', fechaNacimiento: '1991-04-17', sexo: 'F', telefono: '987 654 321', correo: 'mfquispe@correo.pe', seguro: 'Rímac EPS', alergias: 'Penicilina' },
-  { id: 'PAC-002', nombre: 'José Luis Ramírez Soto', dni: '40918276', credencial: 'db37f2679ab5d2ed8e737945f5404aa4dfc417d9b3839400115578c17d94f004', fechaNacimiento: '1968-11-02', sexo: 'M', telefono: '976 123 458', correo: 'jlramirez@correo.pe', seguro: 'Pacífico EPS', alergias: 'Ninguna conocida' },
-  { id: 'PAC-003', nombre: 'Carmen Rosa Flores Díaz', dni: '45620981', credencial: '8df6eb4701c23cc097982ce8a3f51cae939c50874ef0c4de4e197ba44d1d2035', fechaNacimiento: '1983-06-25', sexo: 'F', telefono: '965 447 120', correo: 'cflores@correo.pe', seguro: 'Particular', alergias: 'Ninguna conocida' },
-  { id: 'PAC-004', nombre: 'Luis Alberto Chávez Mori', dni: '09874512', credencial: 'f48b4173e403e6ca8d90959fbd5c0da99c27f487028ac0b294b0f07b3d0e0bd3', fechaNacimiento: '1959-02-09', sexo: 'M', telefono: '944 210 377', correo: 'lachavez@correo.pe', seguro: 'Mapfre EPS', alergias: 'AINEs' },
-  { id: 'PAC-005', nombre: 'Ana Lucía Gutiérrez Paz', dni: '71236548', credencial: 'e41db23740daf940157da1000223391964e1e9a9ad8c50f93454bd7c145530ce', fechaNacimiento: '1997-09-30', sexo: 'F', telefono: '951 380 664', correo: 'agutierrez@correo.pe', seguro: 'Particular', alergias: 'Ninguna conocida' },
-  { id: 'PAC-006', nombre: 'Pedro Pablo Vargas León', dni: '43159872', credencial: 'd10aa257a708e8e9a5b2039006c94603104a55809621662049c7a94a908ebb08', fechaNacimiento: '1986-12-14', sexo: 'M', telefono: '923 556 019', correo: 'ppvargas@correo.pe', seguro: 'Rímac EPS', alergias: 'Mariscos' },
-  { id: 'PAC-007', nombre: 'Valeria Sofía Mendoza Cruz', dni: '78451236', credencial: '9ab9e3591335a64aef044710d9111c6bdd658878d7b1f957cabc3ba8a1e19331', fechaNacimiento: '2019-03-08', sexo: 'F', telefono: '989 002 415', correo: 'familia.mendoza@correo.pe', seguro: 'Pacífico EPS', alergias: 'Ninguna conocida' },
-  { id: 'PAC-008', nombre: 'Jorge Enrique Salazar Ríos', dni: '10457823', credencial: '5b7aa19f86d5e219c740ea8bcaa532757cd5c6782f7bc3535bfaabcec474d9bf', fechaNacimiento: '1975-07-21', sexo: 'M', telefono: '912 774 806', correo: 'jesalazar@correo.pe', seguro: 'Particular', alergias: 'Ninguna conocida' },
+  { id: 'PAC-001', nombre: 'María Fernanda Quispe Huamán', dni: '11111111', credencial: 'b79ace9f2246ef6d4c5bc70dbb3c00b36359b300494981c54c0175b6ed074124', fechaNacimiento: '1991-04-17', sexo: 'F', telefono: '987 654 321', correo: 'mfquispe@correo.pe', seguro: 'Rímac EPS', alergias: 'Penicilina' },
+  { id: 'PAC-002', nombre: 'José Luis Ramírez Soto', dni: '40918276', credencial: '9ca631abd9117f21d0d9e971c60f6aa842569dd81049460ad853361a7d891e4f', fechaNacimiento: '1968-11-02', sexo: 'M', telefono: '976 123 458', correo: 'jlramirez@correo.pe', seguro: 'Pacífico EPS', alergias: 'Ninguna conocida' },
+  { id: 'PAC-003', nombre: 'Carmen Rosa Flores Díaz', dni: '45620981', credencial: '35829f553defb94028ca1e1bd16d12bc0ec7c93745143fb6365400fb35ad5776', fechaNacimiento: '1983-06-25', sexo: 'F', telefono: '965 447 120', correo: 'cflores@correo.pe', seguro: 'Particular', alergias: 'Ninguna conocida' },
+  { id: 'PAC-004', nombre: 'Luis Alberto Chávez Mori', dni: '09874512', credencial: 'a57e5114b1203b62a7874bfe4238a1fc12622ce0b055ff101aaf65ab54d534a9', fechaNacimiento: '1959-02-09', sexo: 'M', telefono: '944 210 377', correo: 'lachavez@correo.pe', seguro: 'Mapfre EPS', alergias: 'AINEs' },
+  { id: 'PAC-005', nombre: 'Ana Lucía Gutiérrez Paz', dni: '71236548', credencial: 'd7e97d2a882540cd2df4f74545ee4ef42ca3eec40a179beeb929bf7dab528636', fechaNacimiento: '1997-09-30', sexo: 'F', telefono: '951 380 664', correo: 'agutierrez@correo.pe', seguro: 'Particular', alergias: 'Ninguna conocida' },
+  { id: 'PAC-006', nombre: 'Pedro Pablo Vargas León', dni: '43159872', credencial: 'bc7f44fe1d22cf8681fa98592aa13ac0698a3847bf006a6c67ac39d418290d7a', fechaNacimiento: '1986-12-14', sexo: 'M', telefono: '923 556 019', correo: 'ppvargas@correo.pe', seguro: 'Rímac EPS', alergias: 'Mariscos' },
+  { id: 'PAC-007', nombre: 'Valeria Sofía Mendoza Cruz', dni: '78451236', credencial: '2fe5ad16143b2856525ad014e83344160947226c187a13361b3c7943462db46b', fechaNacimiento: '2019-03-08', sexo: 'F', telefono: '989 002 415', correo: 'familia.mendoza@correo.pe', seguro: 'Pacífico EPS', alergias: 'Ninguna conocida' },
+  { id: 'PAC-008', nombre: 'Jorge Enrique Salazar Ríos', dni: '10457823', credencial: 'c35173c4a3723ae81dd3bb1bcd94326d98bd3716f452838f6c7795c0bd9b99dc', fechaNacimiento: '1975-07-21', sexo: 'M', telefono: '912 774 806', correo: 'jesalazar@correo.pe', seguro: 'Particular', alergias: 'Ninguna conocida' },
 ];
 
 const ADMINISTRADORES = [
-  { id: 'ADM-001', dni: '43210987', credencial: 'f914b2446762ec10d0c2bd70996636785d1132bc916ede21c0aaa8a28bf116b9', nombre: 'Rosa Valdivia Campos', cargo: 'Coordinadora de Admisión' },
+  { id: 'ADM-001', dni: '33333333', credencial: '3ed337db28a9a1e31f9391ad1493bac2d8663eac61101e04aefe2cb80b9175a2', nombre: 'Rosa Valdivia Campos', cargo: 'Coordinadora de Admisión' },
 ];
 
 const MOTIVOS_FRECUENTES = [

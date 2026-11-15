@@ -8,7 +8,7 @@ import {
   icono,
   insigniaEstado,
   renderizarAviso,
-  renderizarAvatar,
+  renderizarAvatarMedico,
   renderizarEncabezado,
   renderizarVacio,
 } from './ui.js';
@@ -115,7 +115,7 @@ function renderizarDetalle(cita, rol) {
             ${insigniaEstado(cita.estado)}
           </header>
           <div class="ficha__medico">
-            ${renderizarAvatar(cita.medico?.nombre ?? '', 'grande')}
+            ${renderizarAvatarMedico(cita.medico, 'grande')}
             <div>
               <p class="ficha__especialidad">${escaparHtml(cita.medico?.especialidad?.nombre ?? '')}</p>
               <h2>${escaparHtml(cita.medico?.nombre ?? 'Médico no disponible')}</h2>

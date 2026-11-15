@@ -21,7 +21,7 @@ import {
   icono,
   mostrarToast,
   renderizarAviso,
-  renderizarAvatar,
+  renderizarAvatarMedico,
   renderizarEncabezado,
   renderizarListaCitas,
   renderizarStepper,
@@ -116,7 +116,7 @@ function renderizarPasoSeleccion(estado) {
 function renderizarTarjetaMedico(medico, seleccionado) {
   return `
     <button class="tarjeta-medico${seleccionado ? ' tarjeta-medico--seleccionada' : ''}" type="button" data-accion="elegir-medico" data-medico="${escaparHtml(medico.id)}" aria-pressed="${seleccionado}">
-      ${renderizarAvatar(medico.nombre)}
+      ${renderizarAvatarMedico(medico, 'tarjeta')}
       <span class="tarjeta-medico__cuerpo">
         <span class="tarjeta-medico__especialidad">${escaparHtml(medico.especialidad?.nombre ?? '')}</span>
         <span class="tarjeta-medico__nombre">${escaparHtml(medico.nombre)}</span>

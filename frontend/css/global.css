@@ -984,3 +984,158 @@ textarea.entrada {
     transition-duration: .01ms !important;
   }
 }
+
+:root {
+  --alto-barra: 76px;
+}
+
+.barra-superior {
+  gap: 28px;
+  padding: 0 max(20px, calc((100vw - 1240px) / 2));
+}
+
+.marca {
+  gap: 12px;
+}
+
+.marca__logo {
+  width: 46px;
+  height: 46px;
+}
+
+.marca__texto {
+  font-family: var(--fuente-titulos);
+  font-size: 1.12rem;
+  font-weight: 600;
+  letter-spacing: -.01em;
+  line-height: 1.1;
+}
+
+.marca__texto span {
+  display: block;
+  white-space: nowrap;
+}
+
+.navegacion-superior {
+  display: flex;
+  align-items: center;
+  gap: 30px;
+  height: 36px;
+  margin-left: 4px;
+  padding-left: 36px;
+  border-left: 1px solid rgba(255, 255, 255, .16);
+}
+
+.navegacion-superior__enlace {
+  position: relative;
+  padding: 8px 0;
+  color: #fff;
+  font-size: .94rem;
+  font-weight: 500;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.navegacion-superior__enlace::after {
+  content: "";
+  position: absolute;
+  right: 0;
+  bottom: 2px;
+  left: 0;
+  height: 2px;
+  border-radius: 2px;
+  background: #3D9BFF;
+  transform: scaleX(0);
+  transition: transform .2s;
+}
+
+.navegacion-superior__enlace:hover::after,
+.navegacion-superior__enlace[aria-current="page"]::after {
+  transform: scaleX(1);
+}
+
+.boton-icono {
+  width: 44px;
+  height: 44px;
+  border-color: rgba(255, 255, 255, .5);
+  border-radius: 50%;
+}
+
+.usuario-actual {
+  padding: 4px 16px 4px 4px;
+  border: 1px solid rgba(255, 255, 255, .5);
+  border-radius: 999px;
+}
+
+.avatar--claro {
+  width: 36px;
+  height: 36px;
+}
+
+.menu-lateral,
+.fondo-menu {
+  display: none;
+}
+
+.vista {
+  margin-left: 0;
+  padding: 32px max(20px, calc((100vw - 1240px) / 2)) 72px;
+}
+
+.vista__contenido {
+  max-width: none;
+}
+
+@media (max-width: 980px) {
+  .navegacion-superior {
+    display: none;
+  }
+
+  .barra-superior {
+    gap: 14px;
+    height: 72px;
+    padding: 0 16px;
+  }
+
+  .boton-menu {
+    display: grid;
+  }
+
+  .menu-lateral {
+    display: flex;
+    top: 72px;
+  }
+
+  .fondo-menu {
+    display: block;
+    inset: 72px 0 0;
+  }
+
+  .fondo-menu[hidden] {
+    display: none;
+  }
+
+  .usuario-actual {
+    padding: 4px;
+  }
+
+  .vista {
+    padding: 24px 20px 56px;
+  }
+}
+
+@media (max-width: 700px) {
+  .marca__texto {
+    font-size: .92rem;
+  }
+
+  .marca__logo {
+    width: 40px;
+    height: 40px;
+  }
+
+  .boton-icono {
+    width: 40px;
+    height: 40px;
+  }
+}

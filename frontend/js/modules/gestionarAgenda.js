@@ -24,7 +24,7 @@ import {
   icono,
   insigniaEstado,
   mostrarToast,
-  renderizarAvatar,
+  renderizarAvatarMedico,
   renderizarEncabezado,
   renderizarStepper,
   renderizarVacio,
@@ -159,7 +159,7 @@ function renderizarFilaMedico(medico) {
   return `
     <li>
       <a class="fila-medico" href="${construirHash(ID_MODULO, { medico: medico.id })}">
-        ${renderizarAvatar(medico.nombre)}
+        ${renderizarAvatarMedico(medico, 'tarjeta')}
         <span class="fila-medico__info">
           <strong>${escaparHtml(medico.nombre)}</strong>
           <small>${escaparHtml(medico.especialidad?.nombre ?? '')} · ${escaparHtml(medico.consultorio)}</small>
@@ -263,7 +263,7 @@ function renderizarPasoAgenda(estado, contexto) {
     <section class="panel agenda-semanal">
       <header class="agenda-semanal__cabecera">
         <div class="agenda-semanal__medico">
-          ${renderizarAvatar(medico.nombre)}
+          ${renderizarAvatarMedico(medico, 'tarjeta')}
           <div>
             <h2 class="panel__titulo">${escaparHtml(medico.nombre)}</h2>
             <p>${escaparHtml(medico.especialidad?.nombre ?? '')}</p>

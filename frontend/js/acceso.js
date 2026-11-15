@@ -1,5 +1,5 @@
 import * as storage from './core/storage.js';
-import { ErrorDeAcceso, iniciarSesion, registrarPaciente } from './core/autenticacion.js';
+import { ErrorDeAcceso, REGISTRO_HABILITADO, iniciarSesion, registrarPaciente } from './core/autenticacion.js';
 import { icono } from './core/ui.js';
 
 const DESTINO_TRAS_ACCESO = 'index.html#/inicio';
@@ -20,7 +20,7 @@ const elementos = {
 
 const CAMPOS_DE_IDENTIFICACION = {
   paciente: { etiqueta: 'DNI', placeholder: '8 dígitos', modoTeclado: 'numeric', longitudMaxima: 8 },
-  personal: { etiqueta: 'ID de usuario', placeholder: 'Ej. MED-001 o ADM-001', modoTeclado: 'text', longitudMaxima: 12 },
+  personal: { etiqueta: 'DNI', placeholder: '8 dígitos', modoTeclado: 'numeric', longitudMaxima: 8 },
 };
 
 const estado = { grupo: 'paciente', modo: 'ingreso', enviando: false };
@@ -57,7 +57,7 @@ function mostrarError(formulario, error) {
 
 function renderizarAlterno() {
   const { alterno, accionAlterna, modoAlterno } = TEXTOS_POR_MODO[estado.modo];
-  elementos.alterno.hidden = estado.grupo !== 'paciente';
+  elementos.alterno.hidden = estado.grupo !== 'paciente' || !REGISTRO_HABILITADO;
   elementos.alterno.innerHTML = `${alterno} <button class="acceso__enlace" type="button" data-modo="${modoAlterno}">${accionAlterna}</button>`;
 }
 
@@ -154,7 +154,7 @@ function registrarEventos() {
 
   document.addEventListener('input', (evento) => {
     const { target } = evento;
-    const esDni = target.name === 'dni' || (target.name === 'identificador' && estado.grupo === 'paciente');
+    const esDni = target.name === 'dni' || target.name === 'identificador';
     if (esDni) target.value = target.value.replace(/\D/g, '').slice(0, 8);
     if (target.name === 'telefono') target.value = target.value.replace(/[^\d\s]/g, '');
   });

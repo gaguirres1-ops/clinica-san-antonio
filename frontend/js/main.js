@@ -33,6 +33,7 @@ const LIMITE_NOTIFICACIONES = 20;
 
 const elementos = {
   navegacion: document.getElementById('navegacion'),
+  navegacionSuperior: document.getElementById('navegacionSuperior'),
   vista: document.getElementById('vista'),
   botonCerrarSesion: document.getElementById('botonCerrarSesion'),
   botonNotificaciones: document.getElementById('botonNotificaciones'),
@@ -66,6 +67,9 @@ function renderizarUsuario() {
 function renderizarMenu() {
   const rutaActiva = leerRutaActual().id;
   const rutas = rutasDelMenu(sesion.rol);
+  elementos.navegacionSuperior.innerHTML = rutas
+    .map((ruta) => `<a class="navegacion-superior__enlace" href="${construirHash(ruta.id)}"${ruta.id === rutaActiva ? ' aria-current="page"' : ''}>${escaparHtml(ruta.titulo)}</a>`)
+    .join('');
   elementos.navegacion.innerHTML = SECCIONES_DEL_MENU
     .map((seccion) => ({ seccion, enlaces: rutas.filter((ruta) => ruta.seccion === seccion) }))
     .filter(({ enlaces }) => enlaces.length)
