@@ -46,17 +46,17 @@
         </section>
       </div>
 
-      <div class="usuario-actual">
-        <span class="avatar avatar--claro" id="usuarioIniciales" aria-hidden="true"></span>
-        <span class="usuario-actual__texto">
-          <strong id="usuarioNombre"></strong>
-          <small id="usuarioDetalle"></small>
-        </span>
+      <div class="rol-actual">
+        <button class="usuario-actual" id="botonRol" type="button" aria-haspopup="menu" aria-expanded="false" aria-controls="menuRol">
+          <span class="avatar avatar--claro" id="usuarioIniciales" aria-hidden="true"></span>
+          <span class="usuario-actual__texto">
+            <strong id="usuarioNombre"></strong>
+            <small id="usuarioDetalle"></small>
+          </span>
+          <svg class="icono" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
+        </button>
+        <div class="menu-rol" id="menuRol" role="menu" aria-label="Cambiar perfil" hidden></div>
       </div>
-
-      <button class="boton-icono" id="botonCerrarSesion" type="button" aria-label="Cerrar sesión" title="Cerrar sesión">
-        <svg class="icono" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 21H5.5A1.5 1.5 0 0 1 4 19.5v-15A1.5 1.5 0 0 1 5.5 3H9"/><path d="M16 17l5-5-5-5M21 12H9"/></svg>
-      </button>
     </div>
   </header>
 

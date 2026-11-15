@@ -3,6 +3,8 @@ import { crearDatosIniciales, VERSION_DATOS } from '../data/mockData.js';
 const CLAVE_BASE_DATOS = 'clinica-san-antonio:base-datos';
 const CLAVE_SESION = 'clinica-san-antonio:sesion';
 
+export const USUARIOS_DEMO = Object.freeze({ paciente: 'PAC-001', medico: 'MED-001', administrador: 'ADM-001' });
+
 const PREFIJOS_ID = Object.freeze({
   especialidades: 'ESP',
   medicos: 'MED',
@@ -169,7 +171,11 @@ export function obtenerSesion() {
   const guardada = leerLocal(CLAVE_SESION);
   const rol = guardada?.rol;
   const usuarioId = guardada?.usuarios?.[rol];
-  return rol && usuarioId ? { rol, usuarios: { [rol]: usuarioId } } : null;
+  return rol && usuarioId ? { rol, usuarios: { [rol]: usuarioId } } : crearSesionDemo('paciente');
+}
+
+export function crearSesionDemo(rol) {
+  return { rol, usuarios: { [rol]: USUARIOS_DEMO[rol] } };
 }
 
 export function guardarSesion(sesion) {
