@@ -1,4 +1,4 @@
-import { crearDatosIniciales, SESION_INICIAL, VERSION_DATOS } from '../data/mockData.js';
+import { crearDatosIniciales, VERSION_DATOS } from '../data/mockData.js';
 
 const CLAVE_BASE_DATOS = 'clinica-san-antonio:base-datos';
 const CLAVE_SESION = 'clinica-san-antonio:sesion';
@@ -167,14 +167,21 @@ export function restablecer() {
 
 export function obtenerSesion() {
   const guardada = leerLocal(CLAVE_SESION);
-  return {
-    rol: guardada?.rol ?? SESION_INICIAL.rol,
-    usuarios: { ...SESION_INICIAL.usuarios, ...(guardada?.usuarios ?? {}) },
-  };
+  const rol = guardada?.rol;
+  const usuarioId = guardada?.usuarios?.[rol];
+  return rol && usuarioId ? { rol, usuarios: { [rol]: usuarioId } } : null;
 }
 
 export function guardarSesion(sesion) {
   escribirLocal(CLAVE_SESION, sesion);
+}
+
+export function cerrarSesionGuardada() {
+  try {
+    localStorage.removeItem(CLAVE_SESION);
+  } catch (error) {
+    console.warn('No se pudo cerrar la sesión guardada.', error);
+  }
 }
 
 window.addEventListener('storage', (evento) => {

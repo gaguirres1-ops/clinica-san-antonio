@@ -10,12 +10,9 @@ import {
   sumarMinutos,
 } from '../core/fechas.js';
 
-export const VERSION_DATOS = 1;
+export const VERSION_DATOS = 2;
 
-export const SESION_INICIAL = Object.freeze({
-  rol: 'paciente',
-  usuarios: Object.freeze({ paciente: 'PAC-001', medico: 'MED-001', administrador: 'ADM-001' }),
-});
+const PACIENTE_PRINCIPAL_ID = 'PAC-001';
 
 const DIAS_DE_AGENDA = 28;
 const DIAS_CON_OCUPACION_SIMULADA = 21;
@@ -36,65 +33,65 @@ const ESPECIALIDADES = [
 
 const MEDICOS = [
   {
-    id: 'MED-001', nombre: 'Dr. Carlos Mendoza Ríos', especialidadId: 'ESP-002', cmp: '045821', rne: '23104',
+    id: 'MED-001', dni: '08154236', credencial: '9daca2f0dab8c196a33bf31ee3b9fbb0f05b257b33400ea9211cf8ae8fa576c3', nombre: 'Dr. Carlos Mendoza Ríos', especialidadId: 'ESP-002', cmp: '045821', rne: '23104',
     tarifa: 150, consultorio: 'Consultorio 204 · Piso 2', activo: true,
     jornada: { dias: [1, 3, 5], bloques: [['08:00', '12:00']], duracionMinutos: 30 },
   },
   {
-    id: 'MED-002', nombre: 'Dra. Lucía Paredes Salazar', especialidadId: 'ESP-003', cmp: '052310', rne: '27815',
+    id: 'MED-002', dni: '09241875', credencial: '65f37dd5834bd51d9440a48dd34e802fb1ef36613e01716678e42b0c17024a01', nombre: 'Dra. Lucía Paredes Salazar', especialidadId: 'ESP-003', cmp: '052310', rne: '27815',
     tarifa: 120, consultorio: 'Consultorio 105 · Piso 1', activo: true,
     jornada: { dias: [1, 2, 3, 4, 5], bloques: [['14:00', '18:00']], duracionMinutos: 30 },
   },
   {
-    id: 'MED-003', nombre: 'Dr. Javier Huamán Torres', especialidadId: 'ESP-004', cmp: '038774', rne: '19642',
+    id: 'MED-003', dni: '10365482', credencial: 'f293f252c4f1f965ed7d02436bcd9217b10a621f587232805b07b0555b331994', nombre: 'Dr. Javier Huamán Torres', especialidadId: 'ESP-004', cmp: '038774', rne: '19642',
     tarifa: 140, consultorio: 'Consultorio 310 · Piso 3', activo: true,
     jornada: { dias: [2, 4, 6], bloques: [['08:00', '12:30']], duracionMinutos: 30 },
   },
   {
-    id: 'MED-004', nombre: 'Dra. Andrea Castillo Vega', especialidadId: 'ESP-005', cmp: '061295', rne: '31277',
+    id: 'MED-004', dni: '41578263', credencial: 'a0a6f66b74dab8ebee978e66d0fdbef149a20f4b499a3e403f4749823662e1b3', nombre: 'Dra. Andrea Castillo Vega', especialidadId: 'ESP-005', cmp: '061295', rne: '31277',
     tarifa: 130, consultorio: 'Consultorio 212 · Piso 2', activo: true,
     jornada: { dias: [1, 3, 5], bloques: [['15:00', '19:00']], duracionMinutos: 30 },
   },
   {
-    id: 'MED-005', nombre: 'Dr. Ricardo Salinas Ponce', especialidadId: 'ESP-001', cmp: '029467', rne: null,
+    id: 'MED-005', dni: '07456231', credencial: 'a96d6421d74eec33491d3ab42ce74ebb52fa7cd76ddfcb3083f8bf1aba3ba49d', nombre: 'Dr. Ricardo Salinas Ponce', especialidadId: 'ESP-001', cmp: '029467', rne: null,
     tarifa: 80, consultorio: 'Consultorio 101 · Piso 1', activo: true,
     jornada: { dias: [1, 2, 3, 4, 5, 6], bloques: [['08:00', '12:00']], duracionMinutos: 20 },
   },
   {
-    id: 'MED-006', nombre: 'Dra. Patricia Rojas Medina', especialidadId: 'ESP-006', cmp: '057183', rne: '29930',
+    id: 'MED-006', dni: '42983517', credencial: 'adc3557a120df3c169907745436eea5d9e701d227f19887f6d5ad2040baa1f28', nombre: 'Dra. Patricia Rojas Medina', especialidadId: 'ESP-006', cmp: '057183', rne: '29930',
     tarifa: 140, consultorio: 'Consultorio 215 · Piso 2', activo: true,
     jornada: { dias: [2, 4], bloques: [['09:00', '13:00'], ['15:00', '18:00']], duracionMinutos: 30 },
   },
   {
-    id: 'MED-007', nombre: 'Dr. Fernando Ccori Lazo', especialidadId: 'ESP-007', cmp: '049552', rne: '25018',
+    id: 'MED-007', dni: '06718394', credencial: '54f896bfe18ce3db3fd3b808055cc44cf3826c062410bb6038685dbe2b648ec4', nombre: 'Dr. Fernando Ccori Lazo', especialidadId: 'ESP-007', cmp: '049552', rne: '25018',
     tarifa: 160, consultorio: 'Consultorio 308 · Piso 3', activo: true,
     jornada: { dias: [3, 5], bloques: [['09:00', '13:00']], duracionMinutos: 40 },
   },
   {
-    id: 'MED-008', nombre: 'Dra. Gabriela Núñez Arce', especialidadId: 'ESP-002', cmp: '063018', rne: '32406',
+    id: 'MED-008', dni: '44125869', credencial: '976e7239a79a1618284a5f48141fd8b26f57928039ff0429d06ffcdf4b8da22f', nombre: 'Dra. Gabriela Núñez Arce', especialidadId: 'ESP-002', cmp: '063018', rne: '32406',
     tarifa: 150, consultorio: 'Consultorio 206 · Piso 2', activo: true,
     jornada: { dias: [2, 4], bloques: [['14:00', '18:00']], duracionMinutos: 30 },
   },
   {
-    id: 'MED-009', nombre: 'Dr. Miguel Ángel Tapia Soto', especialidadId: 'ESP-001', cmp: '041236', rne: null,
+    id: 'MED-009', dni: '05982741', credencial: '4ea506124999bbbf4e6012043d855103a2d5186453105379e20f18b299f1897f', nombre: 'Dr. Miguel Ángel Tapia Soto', especialidadId: 'ESP-001', cmp: '041236', rne: null,
     tarifa: 80, consultorio: 'Consultorio 102 · Piso 1', activo: true,
     jornada: { dias: [1, 2, 3, 4, 5], bloques: [['16:00', '20:00']], duracionMinutos: 20 },
   },
 ];
 
 const PACIENTES = [
-  { id: 'PAC-001', nombre: 'María Fernanda Quispe Huamán', dni: '72845163', fechaNacimiento: '1991-04-17', sexo: 'F', telefono: '987 654 321', correo: 'mfquispe@correo.pe', seguro: 'Rímac EPS', alergias: 'Penicilina' },
-  { id: 'PAC-002', nombre: 'José Luis Ramírez Soto', dni: '40918276', fechaNacimiento: '1968-11-02', sexo: 'M', telefono: '976 123 458', correo: 'jlramirez@correo.pe', seguro: 'Pacífico EPS', alergias: 'Ninguna conocida' },
-  { id: 'PAC-003', nombre: 'Carmen Rosa Flores Díaz', dni: '45620981', fechaNacimiento: '1983-06-25', sexo: 'F', telefono: '965 447 120', correo: 'cflores@correo.pe', seguro: 'Particular', alergias: 'Ninguna conocida' },
-  { id: 'PAC-004', nombre: 'Luis Alberto Chávez Mori', dni: '09874512', fechaNacimiento: '1959-02-09', sexo: 'M', telefono: '944 210 377', correo: 'lachavez@correo.pe', seguro: 'Mapfre EPS', alergias: 'AINEs' },
-  { id: 'PAC-005', nombre: 'Ana Lucía Gutiérrez Paz', dni: '71236548', fechaNacimiento: '1997-09-30', sexo: 'F', telefono: '951 380 664', correo: 'agutierrez@correo.pe', seguro: 'Particular', alergias: 'Ninguna conocida' },
-  { id: 'PAC-006', nombre: 'Pedro Pablo Vargas León', dni: '43159872', fechaNacimiento: '1986-12-14', sexo: 'M', telefono: '923 556 019', correo: 'ppvargas@correo.pe', seguro: 'Rímac EPS', alergias: 'Mariscos' },
-  { id: 'PAC-007', nombre: 'Valeria Sofía Mendoza Cruz', dni: '78451236', fechaNacimiento: '2019-03-08', sexo: 'F', telefono: '989 002 415', correo: 'familia.mendoza@correo.pe', seguro: 'Pacífico EPS', alergias: 'Ninguna conocida' },
-  { id: 'PAC-008', nombre: 'Jorge Enrique Salazar Ríos', dni: '10457823', fechaNacimiento: '1975-07-21', sexo: 'M', telefono: '912 774 806', correo: 'jesalazar@correo.pe', seguro: 'Particular', alergias: 'Ninguna conocida' },
+  { id: 'PAC-001', nombre: 'María Fernanda Quispe Huamán', dni: '72845163', credencial: 'e24bb1069562c7289e9e8683e1b71995b7c04d5bd1004ef71ced26b348954ba3', fechaNacimiento: '1991-04-17', sexo: 'F', telefono: '987 654 321', correo: 'mfquispe@correo.pe', seguro: 'Rímac EPS', alergias: 'Penicilina' },
+  { id: 'PAC-002', nombre: 'José Luis Ramírez Soto', dni: '40918276', credencial: 'db37f2679ab5d2ed8e737945f5404aa4dfc417d9b3839400115578c17d94f004', fechaNacimiento: '1968-11-02', sexo: 'M', telefono: '976 123 458', correo: 'jlramirez@correo.pe', seguro: 'Pacífico EPS', alergias: 'Ninguna conocida' },
+  { id: 'PAC-003', nombre: 'Carmen Rosa Flores Díaz', dni: '45620981', credencial: '8df6eb4701c23cc097982ce8a3f51cae939c50874ef0c4de4e197ba44d1d2035', fechaNacimiento: '1983-06-25', sexo: 'F', telefono: '965 447 120', correo: 'cflores@correo.pe', seguro: 'Particular', alergias: 'Ninguna conocida' },
+  { id: 'PAC-004', nombre: 'Luis Alberto Chávez Mori', dni: '09874512', credencial: 'f48b4173e403e6ca8d90959fbd5c0da99c27f487028ac0b294b0f07b3d0e0bd3', fechaNacimiento: '1959-02-09', sexo: 'M', telefono: '944 210 377', correo: 'lachavez@correo.pe', seguro: 'Mapfre EPS', alergias: 'AINEs' },
+  { id: 'PAC-005', nombre: 'Ana Lucía Gutiérrez Paz', dni: '71236548', credencial: 'e41db23740daf940157da1000223391964e1e9a9ad8c50f93454bd7c145530ce', fechaNacimiento: '1997-09-30', sexo: 'F', telefono: '951 380 664', correo: 'agutierrez@correo.pe', seguro: 'Particular', alergias: 'Ninguna conocida' },
+  { id: 'PAC-006', nombre: 'Pedro Pablo Vargas León', dni: '43159872', credencial: 'd10aa257a708e8e9a5b2039006c94603104a55809621662049c7a94a908ebb08', fechaNacimiento: '1986-12-14', sexo: 'M', telefono: '923 556 019', correo: 'ppvargas@correo.pe', seguro: 'Rímac EPS', alergias: 'Mariscos' },
+  { id: 'PAC-007', nombre: 'Valeria Sofía Mendoza Cruz', dni: '78451236', credencial: '9ab9e3591335a64aef044710d9111c6bdd658878d7b1f957cabc3ba8a1e19331', fechaNacimiento: '2019-03-08', sexo: 'F', telefono: '989 002 415', correo: 'familia.mendoza@correo.pe', seguro: 'Pacífico EPS', alergias: 'Ninguna conocida' },
+  { id: 'PAC-008', nombre: 'Jorge Enrique Salazar Ríos', dni: '10457823', credencial: '5b7aa19f86d5e219c740ea8bcaa532757cd5c6782f7bc3535bfaabcec474d9bf', fechaNacimiento: '1975-07-21', sexo: 'M', telefono: '912 774 806', correo: 'jesalazar@correo.pe', seguro: 'Particular', alergias: 'Ninguna conocida' },
 ];
 
 const ADMINISTRADORES = [
-  { id: 'ADM-001', nombre: 'Rosa Valdivia Campos', cargo: 'Coordinadora de Admisión' },
+  { id: 'ADM-001', dni: '43210987', credencial: 'c214fd57c18475ecfa3a7c939919f64fdc4614650afd7493821aaba45c2cfcaa', nombre: 'Rosa Valdivia Campos', cargo: 'Coordinadora de Admisión' },
 ];
 
 const MOTIVOS_FRECUENTES = [
@@ -345,7 +342,7 @@ export function crearDatosIniciales(fechaReferencia = new Date()) {
     return cita;
   });
 
-  const pacientesSimulados = PACIENTES.filter((paciente) => paciente.id !== SESION_INICIAL.usuarios.paciente);
+  const pacientesSimulados = PACIENTES.filter((paciente) => paciente.id !== PACIENTE_PRINCIPAL_ID);
   const fechaLimiteSimulacion = sumarDias(hoy, DIAS_CON_OCUPACION_SIMULADA);
 
   horarios

@@ -1,11 +1,11 @@
 import * as storage from './core/storage.js';
+import { cerrarSesion } from './core/autenticacion.js';
 import {
   alCambiarRuta,
   construirHash,
   iniciarNavegacion,
   leerRutaActual,
   navegar,
-  puedeAcceder,
   refrescarVista,
   registrarRutas,
   rutasDelMenu,
@@ -34,7 +34,7 @@ const LIMITE_NOTIFICACIONES = 20;
 const elementos = {
   navegacion: document.getElementById('navegacion'),
   vista: document.getElementById('vista'),
-  selectorRol: document.getElementById('selectorRol'),
+  botonCerrarSesion: document.getElementById('botonCerrarSesion'),
   botonNotificaciones: document.getElementById('botonNotificaciones'),
   contadorNotificaciones: document.getElementById('contadorNotificaciones'),
   panelNotificaciones: document.getElementById('panelNotificaciones'),
@@ -48,16 +48,12 @@ const elementos = {
   botonRestablecer: document.getElementById('botonRestablecer'),
 };
 
-let sesion = storage.obtenerSesion();
+const DESTINO_SIN_SESION = 'login.html';
+
+const sesion = storage.obtenerSesion();
 
 function obtenerContexto() {
   return { sesion, rol: sesion.rol, usuario: usuarioDeSesion(sesion) };
-}
-
-function renderizarSelectorRol() {
-  elementos.selectorRol.querySelectorAll('[data-rol]').forEach((boton) => {
-    boton.setAttribute('aria-pressed', String(boton.dataset.rol === sesion.rol));
-  });
 }
 
 function renderizarUsuario() {
@@ -122,20 +118,6 @@ function alternarMenuLateral(abrir = !document.body.classList.contains('menu-abi
   elementos.botonMenu.setAttribute('aria-label', abrir ? 'Cerrar menú' : 'Abrir menú');
 }
 
-function cambiarRol(rol) {
-  if (rol === sesion.rol || !ROLES[rol]) return;
-  sesion = { ...sesion, rol };
-  storage.guardarSesion(sesion);
-  alternarPanelNotificaciones(false);
-  renderizarShell();
-  if (puedeAcceder(leerRutaActual().id, rol)) {
-    refrescarVista();
-  } else {
-    navegar('inicio');
-  }
-  mostrarToast(`Ahora navegas como ${ROLES[rol].etiqueta.toLowerCase()}.`, 'info');
-}
-
 function abrirNotificacion(id) {
   const notificacion = notificacionesDe(sesion).find((item) => item.id === id);
   if (!notificacion) return;
@@ -144,33 +126,43 @@ function abrirNotificacion(id) {
   if (notificacion.citaId) navegar('detalle-cita', { id: notificacion.citaId });
 }
 
+async function salirDelSistema() {
+  const confirmado = await confirmarAccion({
+    titulo: 'Cerrar sesión',
+    mensaje: '¿Deseas salir del sistema?',
+    textoConfirmar: 'Cerrar sesión',
+  });
+  if (!confirmado) return;
+  cerrarSesion();
+  location.replace(DESTINO_SIN_SESION);
+}
+
 async function restablecerDatos() {
   const confirmado = await confirmarAccion({
     titulo: 'Restablecer datos de demostración',
-    mensaje: 'Se eliminarán todas las citas, pagos y notificaciones creadas en este navegador y se cargarán los datos iniciales. Esta acción no se puede deshacer.',
+    mensaje: 'Se eliminarán las citas, pagos, notificaciones y cuentas creadas en este navegador y se cargarán los datos iniciales. Esta acción no se puede deshacer.',
     textoConfirmar: 'Restablecer datos',
     peligro: true,
   });
   if (!confirmado) return;
   storage.restablecer();
   alternarMenuLateral(false);
+  if (!usuarioDeSesion(sesion)) {
+    cerrarSesion();
+    location.replace(DESTINO_SIN_SESION);
+    return;
+  }
   navegar('inicio');
   mostrarToast('Datos de demostración restablecidos.');
 }
 
 function renderizarShell() {
-  renderizarSelectorRol();
   renderizarUsuario();
   renderizarMenu();
   renderizarNotificaciones();
 }
 
 function registrarEventosDelShell() {
-  elementos.selectorRol.addEventListener('click', (evento) => {
-    const boton = evento.target.closest('[data-rol]');
-    if (boton) cambiarRol(boton.dataset.rol);
-  });
-
   elementos.botonNotificaciones.addEventListener('click', (evento) => {
     evento.stopPropagation();
     alternarPanelNotificaciones();
@@ -185,6 +177,7 @@ function registrarEventosDelShell() {
   elementos.botonMenu.addEventListener('click', () => alternarMenuLateral());
   elementos.fondoMenu.addEventListener('click', () => alternarMenuLateral(false));
   elementos.botonRestablecer.addEventListener('click', restablecerDatos);
+  elementos.botonCerrarSesion.addEventListener('click', salirDelSistema);
 
   document.addEventListener('click', (evento) => {
     if (!elementos.panelNotificaciones.hidden && !evento.target.closest('.notificaciones')) {
@@ -202,15 +195,24 @@ function registrarEventosDelShell() {
   });
 }
 
-registrarRutas([inicio, reservarCita, reprogramarCita, cancelarCita, diagnostico, gestionarAgenda, reasignarMedico, detalleCita]);
-registrarEventosDelShell();
-storage.suscribir(() => {
-  renderizarUsuario();
-  renderizarNotificaciones();
-});
-alCambiarRuta(() => {
-  renderizarMenu();
-  alternarMenuLateral(false);
-});
-renderizarShell();
-iniciarNavegacion({ contenedor: elementos.vista, contexto: obtenerContexto });
+function iniciarAplicacion() {
+  registrarRutas([inicio, reservarCita, reprogramarCita, cancelarCita, diagnostico, gestionarAgenda, reasignarMedico, detalleCita]);
+  registrarEventosDelShell();
+  storage.suscribir(() => {
+    renderizarUsuario();
+    renderizarNotificaciones();
+  });
+  alCambiarRuta(() => {
+    renderizarMenu();
+    alternarMenuLateral(false);
+  });
+  renderizarShell();
+  iniciarNavegacion({ contenedor: elementos.vista, contexto: obtenerContexto });
+}
+
+if (sesion && usuarioDeSesion(sesion)) {
+  iniciarAplicacion();
+} else {
+  cerrarSesion();
+  location.replace(DESTINO_SIN_SESION);
+}

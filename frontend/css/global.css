@@ -175,56 +175,9 @@ button {
   white-space: nowrap;
 }
 
-.marca__texto small {
-  display: block;
-  color: var(--color-texto-tenue);
-  font-size: .75rem;
-  line-height: 1.3;
-}
-
-.selector-rol {
-  display: flex;
-  gap: 4px;
-  margin-left: auto;
-  padding: 4px;
-  border: 1px solid rgba(255, 255, 255, .12);
-  border-radius: 999px;
-  background: rgba(255, 255, 255, .06);
-}
-
-.selector-rol__opcion {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  height: 36px;
-  padding: 0 14px;
-  border: 0;
-  border-radius: 999px;
-  background: transparent;
-  color: #CBD5E1;
-  font-size: .84rem;
-  font-weight: 500;
-  transition: background .15s, color .15s;
-}
-
-.selector-rol__opcion .icono {
-  width: 17px;
-  height: 17px;
-}
-
-.selector-rol__opcion:hover {
-  background: rgba(255, 255, 255, .08);
-  color: #fff;
-}
-
-.selector-rol__opcion[aria-pressed="true"] {
-  background: #fff;
-  color: var(--color-noche);
-  font-weight: 600;
-}
-
 .barra-superior__acciones {
   display: flex;
+  margin-left: auto;
   align-items: center;
   gap: 14px;
 }
@@ -1001,19 +954,6 @@ textarea.entrada {
   .vista {
     margin-left: 0;
     padding-top: 24px;
-  }
-}
-
-@media (max-width: 760px) {
-  .selector-rol__texto,
-  .marca__texto small {
-    display: none;
-  }
-
-  .selector-rol__opcion {
-    width: 36px;
-    padding: 0;
-    justify-content: center;
   }
 }
 
