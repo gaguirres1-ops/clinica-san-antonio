@@ -3,7 +3,7 @@ import { hoyISO } from './fechas.js';
 
 const LONGITUD_DNI = 8;
 const LONGITUD_MINIMA_CONTRASENA = 8;
-const ERROR_CREDENCIALES = 'El DNI o la contraseña no son correctos.';
+const ERROR_CREDENCIALES = 'Las credenciales no son correctas.';
 
 export class ErrorDeAcceso extends Error {
   constructor(mensaje, campo = null) {
@@ -29,12 +29,15 @@ export async function calcularCredencial(dni, contrasena) {
   return [...new Uint8Array(huella)].map((byte) => byte.toString(16).padStart(2, '0')).join('');
 }
 
-function buscarPorDni(dni, grupo) {
-  const candidatos = grupo === 'paciente'
-    ? [{ coleccion: 'pacientes', rol: 'paciente' }]
-    : [{ coleccion: 'medicos', rol: 'medico' }, { coleccion: 'administradores', rol: 'administrador' }];
+function buscarCuenta(identificador, grupo) {
+  if (grupo === 'paciente') {
+    const paciente = storage.buscar('pacientes', (item) => item.dni === identificador);
+    return paciente && { registro: paciente, rol: 'paciente' };
+  }
+  const id = identificador.toUpperCase();
+  const candidatos = [{ coleccion: 'medicos', rol: 'medico' }, { coleccion: 'administradores', rol: 'administrador' }];
   for (const { coleccion, rol } of candidatos) {
-    const registro = storage.buscar(coleccion, (item) => item.dni === dni);
+    const registro = storage.buscar(coleccion, (item) => item.id === id || item.dni === identificador);
     if (registro) return { registro, rol };
   }
   return null;
@@ -50,17 +53,20 @@ function abrirSesion(rol, usuarioId) {
   return sesion;
 }
 
-export async function iniciarSesion({ dni, contrasena, grupo }) {
-  if (!esDniValido(dni)) throw new ErrorDeAcceso(`El DNI debe tener ${LONGITUD_DNI} dígitos.`, 'dni');
+export async function iniciarSesion({ identificador, contrasena, grupo }) {
+  if (grupo === 'paciente' && !esDniValido(identificador)) {
+    throw new ErrorDeAcceso(`El DNI debe tener ${LONGITUD_DNI} dígitos.`, 'identificador');
+  }
+  if (grupo !== 'paciente' && !identificador) throw new ErrorDeAcceso('Ingresa tu ID de usuario.', 'identificador');
   if (!contrasena) throw new ErrorDeAcceso('Ingresa tu contraseña.', 'contrasena');
 
-  const encontrado = buscarPorDni(dni, grupo);
-  const credencial = await calcularCredencial(dni, contrasena);
-  if (!encontrado || encontrado.registro.credencial !== credencial) throw new ErrorDeAcceso(ERROR_CREDENCIALES);
-  if (encontrado.rol === 'medico' && !encontrado.registro.activo) {
+  const cuenta = buscarCuenta(identificador, grupo);
+  const credencial = cuenta && await calcularCredencial(cuenta.registro.dni, contrasena);
+  if (!cuenta || cuenta.registro.credencial !== credencial) throw new ErrorDeAcceso(ERROR_CREDENCIALES);
+  if (cuenta.rol === 'medico' && !cuenta.registro.activo) {
     throw new ErrorDeAcceso('Tu cuenta no está activa. Comunícate con administración.');
   }
-  return abrirSesion(encontrado.rol, encontrado.registro.id);
+  return abrirSesion(cuenta.rol, cuenta.registro.id);
 }
 
 export function validarDatosDeRegistro(datos) {

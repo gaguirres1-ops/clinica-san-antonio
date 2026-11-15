@@ -10,7 +10,7 @@ import {
   sumarMinutos,
 } from '../core/fechas.js';
 
-export const VERSION_DATOS = 2;
+export const VERSION_DATOS = 4;
 
 const PACIENTE_PRINCIPAL_ID = 'PAC-001';
 
@@ -33,49 +33,49 @@ const ESPECIALIDADES = [
 
 const MEDICOS = [
   {
-    id: 'MED-001', dni: '08154236', credencial: '9daca2f0dab8c196a33bf31ee3b9fbb0f05b257b33400ea9211cf8ae8fa576c3', nombre: 'Dr. Carlos Mendoza Ríos', especialidadId: 'ESP-002', cmp: '045821', rne: '23104',
+    id: 'MED-001', dni: '08154236', credencial: 'be960853e20aa3657309287209fe45c708935f64bb96bafb4c076f03e17b2c08', nombre: 'Dr. Carlos Mendoza Ríos', especialidadId: 'ESP-002', cmp: '045821', rne: '23104',
     tarifa: 150, consultorio: 'Consultorio 204 · Piso 2', activo: true,
     jornada: { dias: [1, 3, 5], bloques: [['08:00', '12:00']], duracionMinutos: 30 },
   },
   {
-    id: 'MED-002', dni: '09241875', credencial: '65f37dd5834bd51d9440a48dd34e802fb1ef36613e01716678e42b0c17024a01', nombre: 'Dra. Lucía Paredes Salazar', especialidadId: 'ESP-003', cmp: '052310', rne: '27815',
+    id: 'MED-002', dni: '09241875', credencial: 'e8eca022c94782e95d38f9aa92b5e986b8bbcf52bd48469c395213f5140cd50b', nombre: 'Dra. Lucía Paredes Salazar', especialidadId: 'ESP-003', cmp: '052310', rne: '27815',
     tarifa: 120, consultorio: 'Consultorio 105 · Piso 1', activo: true,
     jornada: { dias: [1, 2, 3, 4, 5], bloques: [['14:00', '18:00']], duracionMinutos: 30 },
   },
   {
-    id: 'MED-003', dni: '10365482', credencial: 'f293f252c4f1f965ed7d02436bcd9217b10a621f587232805b07b0555b331994', nombre: 'Dr. Javier Huamán Torres', especialidadId: 'ESP-004', cmp: '038774', rne: '19642',
+    id: 'MED-003', dni: '10365482', credencial: '07edc9e0d46b5193d6734dd027a1e9a13970e0c0932fd42bf7d723d3a7884d93', nombre: 'Dr. Javier Huamán Torres', especialidadId: 'ESP-004', cmp: '038774', rne: '19642',
     tarifa: 140, consultorio: 'Consultorio 310 · Piso 3', activo: true,
     jornada: { dias: [2, 4, 6], bloques: [['08:00', '12:30']], duracionMinutos: 30 },
   },
   {
-    id: 'MED-004', dni: '41578263', credencial: 'a0a6f66b74dab8ebee978e66d0fdbef149a20f4b499a3e403f4749823662e1b3', nombre: 'Dra. Andrea Castillo Vega', especialidadId: 'ESP-005', cmp: '061295', rne: '31277',
+    id: 'MED-004', dni: '41578263', credencial: '5e94e971f01e31f544dc9ae8b8c251a3da5ff1d601c4d505080929fe4e644307', nombre: 'Dra. Andrea Castillo Vega', especialidadId: 'ESP-005', cmp: '061295', rne: '31277',
     tarifa: 130, consultorio: 'Consultorio 212 · Piso 2', activo: true,
     jornada: { dias: [1, 3, 5], bloques: [['15:00', '19:00']], duracionMinutos: 30 },
   },
   {
-    id: 'MED-005', dni: '07456231', credencial: 'a96d6421d74eec33491d3ab42ce74ebb52fa7cd76ddfcb3083f8bf1aba3ba49d', nombre: 'Dr. Ricardo Salinas Ponce', especialidadId: 'ESP-001', cmp: '029467', rne: null,
+    id: 'MED-005', dni: '07456231', credencial: '49350510ced96f42d63b19f8950c46fba88572f83948cde07e4f186f8ed92977', nombre: 'Dr. Ricardo Salinas Ponce', especialidadId: 'ESP-001', cmp: '029467', rne: null,
     tarifa: 80, consultorio: 'Consultorio 101 · Piso 1', activo: true,
     jornada: { dias: [1, 2, 3, 4, 5, 6], bloques: [['08:00', '12:00']], duracionMinutos: 20 },
   },
   {
-    id: 'MED-006', dni: '42983517', credencial: 'adc3557a120df3c169907745436eea5d9e701d227f19887f6d5ad2040baa1f28', nombre: 'Dra. Patricia Rojas Medina', especialidadId: 'ESP-006', cmp: '057183', rne: '29930',
+    id: 'MED-006', dni: '42983517', credencial: 'f6154759f2d3eb48b26b8308cce3aa9f6384dd7535aff2d07cb3a5540b4cc310', nombre: 'Dra. Patricia Rojas Medina', especialidadId: 'ESP-006', cmp: '057183', rne: '29930',
     tarifa: 140, consultorio: 'Consultorio 215 · Piso 2', activo: true,
     jornada: { dias: [2, 4], bloques: [['09:00', '13:00'], ['15:00', '18:00']], duracionMinutos: 30 },
   },
   {
-    id: 'MED-007', dni: '06718394', credencial: '54f896bfe18ce3db3fd3b808055cc44cf3826c062410bb6038685dbe2b648ec4', nombre: 'Dr. Fernando Ccori Lazo', especialidadId: 'ESP-007', cmp: '049552', rne: '25018',
+    id: 'MED-007', dni: '06718394', credencial: '0682197f0a4b6a1d268c5edca644d2d234531becf5d5da6768d8998bc12b589c', nombre: 'Dr. Fernando Ccori Lazo', especialidadId: 'ESP-007', cmp: '049552', rne: '25018',
     tarifa: 160, consultorio: 'Consultorio 308 · Piso 3', activo: true,
     jornada: { dias: [3, 5], bloques: [['09:00', '13:00']], duracionMinutos: 40 },
   },
   {
-    id: 'MED-008', dni: '44125869', credencial: '976e7239a79a1618284a5f48141fd8b26f57928039ff0429d06ffcdf4b8da22f', nombre: 'Dra. Gabriela Núñez Arce', especialidadId: 'ESP-002', cmp: '063018', rne: '32406',
+    id: 'MED-008', dni: '44125869', credencial: 'eb4a9b5ee5232ad74beddf54568ffc8cd7975bf661b7bd8c26021e68016971cb', nombre: 'Dra. Gabriela Núñez Arce', especialidadId: 'ESP-002', cmp: '063018', rne: '32406',
     tarifa: 150, consultorio: 'Consultorio 206 · Piso 2', activo: true,
-    jornada: { dias: [2, 4], bloques: [['14:00', '18:00']], duracionMinutos: 30 },
+    jornada: { dias: [1, 2, 3, 4, 5], bloques: [['08:00', '12:00'], ['14:00', '18:00']], duracionMinutos: 30 },
   },
   {
-    id: 'MED-009', dni: '05982741', credencial: '4ea506124999bbbf4e6012043d855103a2d5186453105379e20f18b299f1897f', nombre: 'Dr. Miguel Ángel Tapia Soto', especialidadId: 'ESP-001', cmp: '041236', rne: null,
+    id: 'MED-009', dni: '05982741', credencial: '03b540a715e42b567334a4c7bb826c2cbb599123a9a65bb40d6e7815228c3d13', nombre: 'Dr. Miguel Ángel Tapia Soto', especialidadId: 'ESP-001', cmp: '041236', rne: null,
     tarifa: 80, consultorio: 'Consultorio 102 · Piso 1', activo: true,
-    jornada: { dias: [1, 2, 3, 4, 5], bloques: [['16:00', '20:00']], duracionMinutos: 20 },
+    jornada: { dias: [1, 2, 3, 4, 5], bloques: [['08:00', '12:00'], ['16:00', '20:00']], duracionMinutos: 20 },
   },
 ];
 
@@ -91,7 +91,7 @@ const PACIENTES = [
 ];
 
 const ADMINISTRADORES = [
-  { id: 'ADM-001', dni: '43210987', credencial: 'c214fd57c18475ecfa3a7c939919f64fdc4614650afd7493821aaba45c2cfcaa', nombre: 'Rosa Valdivia Campos', cargo: 'Coordinadora de Admisión' },
+  { id: 'ADM-001', dni: '43210987', credencial: 'f914b2446762ec10d0c2bd70996636785d1132bc916ede21c0aaa8a28bf116b9', nombre: 'Rosa Valdivia Campos', cargo: 'Coordinadora de Admisión' },
 ];
 
 const MOTIVOS_FRECUENTES = [

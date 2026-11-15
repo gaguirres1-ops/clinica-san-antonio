@@ -18,6 +18,11 @@ const elementos = {
   alterno: document.getElementById('alternoAcceso'),
 };
 
+const CAMPOS_DE_IDENTIFICACION = {
+  paciente: { etiqueta: 'DNI', placeholder: '8 dígitos', modoTeclado: 'numeric', longitudMaxima: 8 },
+  personal: { etiqueta: 'ID de usuario', placeholder: 'Ej. MED-001 o ADM-001', modoTeclado: 'text', longitudMaxima: 12 },
+};
+
 const estado = { grupo: 'paciente', modo: 'ingreso', enviando: false };
 
 function leerCampos(formulario) {
@@ -65,7 +70,18 @@ function renderizar() {
   elementos.tipos.querySelectorAll('[data-grupo]').forEach((boton) => {
     boton.setAttribute('aria-pressed', String(boton.dataset.grupo === estado.grupo));
   });
+  renderizarIdentificacion();
   renderizarAlterno();
+}
+
+function renderizarIdentificacion() {
+  const { etiqueta, placeholder, modoTeclado, longitudMaxima } = CAMPOS_DE_IDENTIFICACION[estado.grupo];
+  const entrada = document.getElementById('ingresoIdentificador');
+  document.getElementById('etiquetaIdentificador').textContent = etiqueta;
+  entrada.placeholder = placeholder;
+  entrada.inputMode = modoTeclado;
+  entrada.maxLength = longitudMaxima;
+  entrada.value = '';
 }
 
 function cambiarModo(modo) {
@@ -127,7 +143,7 @@ function registrarEventos() {
 
   elementos.formularioIngreso.addEventListener('submit', (evento) => enviarFormulario(
     evento,
-    (campos) => iniciarSesion({ dni: campos.dni, contrasena: campos.contrasena, grupo: estado.grupo }),
+    (campos) => iniciarSesion({ identificador: campos.identificador, contrasena: campos.contrasena, grupo: estado.grupo }),
   ));
   elementos.formularioRegistro.addEventListener('submit', (evento) => enviarFormulario(evento, registrarPaciente));
 
@@ -138,7 +154,8 @@ function registrarEventos() {
 
   document.addEventListener('input', (evento) => {
     const { target } = evento;
-    if (target.name === 'dni') target.value = target.value.replace(/\D/g, '').slice(0, 8);
+    const esDni = target.name === 'dni' || (target.name === 'identificador' && estado.grupo === 'paciente');
+    if (esDni) target.value = target.value.replace(/\D/g, '').slice(0, 8);
     if (target.name === 'telefono') target.value = target.value.replace(/[^\d\s]/g, '');
   });
 }
