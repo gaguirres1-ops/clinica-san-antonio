@@ -1,5 +1,5 @@
 import * as storage from './storage.js';
-import { ESTADOS_CITA, esCitaActiva, esCitaFutura, obtenerCitaDetallada, puedeVerCita } from './dominio.js';
+import { ESTADOS_CITA, esCitaActiva, esCitaFutura, obtenerCitaDetallada, puedeCancelarCita, puedeReprogramarCita, puedeVerCita } from './dominio.js';
 import { formatearFecha, formatearFechaLarga, formatearMomento } from './fechas.js';
 import { construirHash, puedeAcceder } from './navigation.js';
 import {
@@ -16,7 +16,8 @@ import {
 const ACCIONES_DISPONIBLES = [
   {
     ruta: 'reprogramar-cita', texto: 'Reprogramar cita', iconoAccion: 'reprogramar', variante: 'secundario',
-    aplica: (cita) => esCitaActiva(cita) && esCitaFutura(cita),
+    aplica: puedeReprogramarCita,
+    regla: 'Reprogramación: solo una vez. La nueva fecha debe ser posterior a la fecha actual de la cita.',
   },
   {
     ruta: 'reasignar-medico', texto: 'Reasignar médico', iconoAccion: 'reasignar', variante: 'secundario',
@@ -28,7 +29,8 @@ const ACCIONES_DISPONIBLES = [
   },
   {
     ruta: 'cancelar-cita', texto: 'Cancelar cita', iconoAccion: 'cancelar', variante: 'peligro-suave',
-    aplica: (cita) => esCitaActiva(cita) && esCitaFutura(cita),
+    aplica: puedeCancelarCita,
+    regla: 'Cancelación: disponible antes de la atención. El reembolso depende del pago y de las 24 horas previas.',
   },
 ];
 
@@ -82,17 +84,22 @@ function renderizarLineaDeTiempo(eventos) {
     </ol>`;
 }
 
+function renderizarAccion(cita, accion) {
+  const contenido = `${icono(accion.iconoAccion)}${escaparHtml(accion.texto)}`;
+  const boton = accion.aplica(cita)
+    ? `<a class="boton boton--${accion.variante} boton--bloque" href="${construirHash(accion.ruta, { cita: cita.id })}">${contenido}</a>`
+    : `<button class="boton boton--${accion.variante} boton--bloque" type="button" disabled>${contenido}</button>`;
+  return `${boton}${accion.regla ? `<p class="acciones-detalle__regla">${escaparHtml(accion.regla)}</p>` : ''}`;
+}
+
 function renderizarAcciones(cita, rol) {
-  const acciones = ACCIONES_DISPONIBLES.filter((accion) => puedeAcceder(accion.ruta, rol) && accion.aplica(cita));
+  const acciones = ACCIONES_DISPONIBLES.filter((accion) => puedeAcceder(accion.ruta, rol) && (accion.regla || accion.aplica(cita)));
   if (!acciones.length) return '';
   return `
     <section class="panel">
       <header class="panel__cabecera"><h2 class="panel__titulo">Acciones</h2></header>
       <div class="acciones-detalle">
-        ${acciones.map((accion) => `
-          <a class="boton boton--${accion.variante} boton--bloque" href="${construirHash(accion.ruta, { cita: cita.id })}">
-            ${icono(accion.iconoAccion)}${escaparHtml(accion.texto)}
-          </a>`).join('')}
+        ${acciones.map((accion) => renderizarAccion(cita, accion)).join('')}
       </div>
     </section>`;
 }

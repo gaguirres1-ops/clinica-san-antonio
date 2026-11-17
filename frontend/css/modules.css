@@ -2403,3 +2403,198 @@ button.celda-agenda:hover:not(:disabled) {
     width: 100%;
   }
 }
+
+.acciones-detalle__regla {
+  margin: -4px 0 6px;
+  padding: 10px 12px;
+  border: 1px solid var(--color-borde);
+  border-radius: var(--radio-sm);
+  background: var(--color-fondo);
+  color: var(--color-texto-suave);
+  font-size: .78rem;
+}
+
+.validacion {
+  display: grid;
+  gap: 8px;
+  margin: 20px 0;
+}
+
+.validacion__regla {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  border-radius: var(--radio-sm);
+  font-size: .9rem;
+  font-weight: 500;
+}
+
+.validacion__regla--cumple {
+  background: var(--color-exito-suave);
+  color: var(--color-exito);
+}
+
+.validacion__regla--falla {
+  background: var(--color-peligro-suave);
+  color: var(--color-peligro);
+}
+
+.franjas--separadas {
+  margin-top: 16px;
+}
+
+.comparacion--doble .comparacion__medico span {
+  display: block;
+  color: var(--color-texto-suave);
+  font-size: .8rem;
+}
+
+.campo--separado {
+  margin-top: 20px;
+}
+
+
+
+
+.agenda-semanal__leyenda li {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  color: var(--color-texto);
+  font-size: .82rem;
+}
+
+
+
+.gestion-agenda {
+  display: grid;
+  grid-template-columns: minmax(280px, 330px) minmax(0, 1fr);
+  gap: 32px;
+  align-items: start;
+}
+
+.gestion-agenda__cabecera {
+  margin-bottom: 24px;
+}
+
+.gestion-agenda__cabecera p {
+  margin-top: 6px;
+  font-size: .88rem;
+}
+
+.medicos-agenda {
+  display: grid;
+  gap: 10px;
+}
+
+.medico-agenda {
+  display: flex;
+  align-items: center;
+  gap: 13px;
+  width: 100%;
+  min-height: 72px;
+  padding: 14px;
+  border: 1px solid var(--color-borde);
+  border-radius: 10px;
+  background: #fff;
+  color: var(--color-titulo);
+  text-align: left;
+}
+
+.medico-agenda:hover {
+  background: var(--color-fondo);
+}
+
+.medico-agenda--seleccionado {
+  padding: 13px;
+  border: 2px solid var(--color-azul-claro);
+  background: var(--color-azul-suave);
+}
+
+.medico-agenda__info {
+  flex: 1;
+  min-width: 0;
+}
+
+.medico-agenda__info strong,
+.medico-agenda__info small {
+  display: block;
+}
+
+.medico-agenda__info strong {
+  font-size: .88rem;
+  line-height: 1.45;
+}
+
+.medico-agenda__info small {
+  margin-top: 2px;
+  color: var(--color-texto-suave);
+  font-size: .76rem;
+}
+
+.medico-agenda__marca {
+  color: var(--color-azul);
+  stroke-width: 2.6;
+}
+
+.celda-agenda {
+  gap: 2px;
+}
+
+.celda-agenda small {
+  font-size: .62rem;
+  font-weight: 700;
+}
+
+.agenda-semanal__muestra {
+  width: 15px;
+  height: 15px;
+  border: 1px solid transparent;
+  border-radius: 4px;
+}
+
+.agenda-semanal__muestra--disponible {
+  border-color: #6BAF85;
+  background: #C7E7D4;
+}
+
+.agenda-semanal__muestra--ocupado {
+  border-color: #A8B8D8;
+  background: var(--color-azul-suave);
+}
+
+.agenda-semanal__muestra--bloqueado {
+  border-color: #9EA9B6;
+  background: #DCE2E9;
+}
+
+.agenda-semanal__muestra--seleccionada {
+  border: 2px solid var(--color-noche);
+  background: #fff;
+}
+
+.agenda-semanal__acciones-area {
+  padding-top: 24px;
+  border-top: 1px solid var(--color-borde);
+}
+
+.agenda-semanal__acciones-area .agenda-semanal__seleccion {
+  margin-bottom: 16px;
+  padding: 0;
+  background: none;
+  font-size: .85rem;
+}
+
+@media (max-width: 1100px) {
+  .gestion-agenda {
+    grid-template-columns: 280px minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 900px) {
+  .gestion-agenda {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 24px;
+  }
+}

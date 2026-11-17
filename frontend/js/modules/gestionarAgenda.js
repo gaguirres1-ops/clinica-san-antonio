@@ -16,32 +16,25 @@ import {
   hoyISO,
   sumarDias,
 } from '../core/fechas.js';
-import { construirHash } from '../core/navigation.js';
 import {
   abrirModal,
   confirmarAccion,
   escaparHtml,
   icono,
-  insigniaEstado,
   mostrarToast,
   renderizarAvatarMedico,
   renderizarEncabezado,
-  renderizarStepper,
   renderizarVacio,
 } from '../core/ui.js';
 
 const ID_MODULO = 'gestionar-agenda';
-const PASOS = ['Seleccionar médico', 'Horarios de atención', 'Confirmación'];
-const PASO_MEDICO = 0;
-const PASO_AGENDA = 1;
-const PASO_CONFIRMACION = 2;
 const DIAS_POR_SEMANA = 6;
 const SEMANAS_ADELANTE = 8;
 const HORA_MINIMA = '06:00';
 const HORA_MAXIMA = '22:00';
 
 const ETIQUETAS_DE_ESTADO = {
-  [ESTADOS_HORARIO.DISPONIBLE]: 'Libre',
+  [ESTADOS_HORARIO.DISPONIBLE]: 'Disponible',
   [ESTADOS_HORARIO.OCUPADO]: 'Ocupado',
   [ESTADOS_HORARIO.BLOQUEADO]: 'Bloqueado',
 };
@@ -51,23 +44,22 @@ function obtenerLunes(fechaIso) {
   return sumarDias(fechaIso, -desplazamiento);
 }
 
-function contarPorEstado(horarios) {
-  return Object.values(ESTADOS_HORARIO).reduce((conteo, estado) => ({
-    ...conteo,
-    [estado]: horarios.filter((horario) => horario.estado === estado).length,
-  }), {});
-}
-
 function listarHorariosDeSemana(medicoId, lunes) {
-  const domingo = sumarDias(lunes, DIAS_POR_SEMANA);
+  const finDeSemana = sumarDias(lunes, DIAS_POR_SEMANA);
   return storage
-    .filtrar('horarios', (horario) => horario.medicoId === medicoId && horario.fecha >= lunes && horario.fecha < domingo)
+    .filtrar('horarios', (horario) => horario.medicoId === medicoId && horario.fecha >= lunes && horario.fecha < finDeSemana)
     .sort((a, b) => `${a.fecha}${a.hora}`.localeCompare(`${b.fecha}${b.hora}`));
 }
 
 function listarMedicosGestionables({ rol, usuario }) {
   const medicos = listarMedicos({ soloActivos: false });
   return rol === 'medico' ? medicos.filter((medico) => medico.id === usuario.id) : medicos;
+}
+
+function buscarHorario(medicoId, seleccion) {
+  return seleccion
+    ? storage.buscar('horarios', (horario) => horario.medicoId === medicoId && horario.fecha === seleccion.fecha && horario.hora === seleccion.hora)
+    : null;
 }
 
 function hayCruceDeHorario(medicoId, fecha, hora, duracionMinutos) {
@@ -79,7 +71,8 @@ function hayCruceDeHorario(medicoId, fecha, hora, duracionMinutos) {
     && inicio < aMinutos(horario.hora) + horario.duracionMinutos));
 }
 
-function notificarCambioDeAgenda({ rol, medico, titulo, mensaje }) {
+function notificarCambioDeAgenda({ rol, medico, mensaje }) {
+  const titulo = 'Agenda actualizada';
   notificar(rol === 'administrador'
     ? { destinatarioRol: 'medico', destinatarioId: medico.id, titulo, mensaje }
     : { destinatarioRol: 'administrador', destinatarioId: null, titulo, mensaje: `${medico.nombre}: ${mensaje}` });
@@ -104,109 +97,75 @@ function agregarHorario({ medicoId, fecha, hora, rol }) {
       estado: ESTADOS_HORARIO.DISPONIBLE,
       citaId: null,
     });
-    notificarCambioDeAgenda({
-      rol,
-      medico,
-      titulo: 'Agenda actualizada',
-      mensaje: `Se agregó un horario de atención el ${formatearFecha(fecha)} a las ${hora}.`,
-    });
+    notificarCambioDeAgenda({ rol, medico, mensaje: `Se agregó un horario de atención el ${formatearFecha(fecha)} a las ${hora}.` });
     return horario;
   });
-}
-
-function validarHorarioModificable(horario, estadosPermitidos) {
-  if (!horario || !estadosPermitidos.includes(horario.estado)) {
-    throw new ErrorDeDominio('El horario cambió y ya no admite esta operación.');
-  }
-  if (!esFuturo(horario.fecha, horario.hora)) throw new ErrorDeDominio('No se pueden modificar horarios pasados.');
 }
 
 function eliminarHorario({ horarioId, rol }) {
   return storage.ejecutarTransaccion(() => {
     const horario = storage.obtenerPorId('horarios', horarioId);
-    validarHorarioModificable(horario, [ESTADOS_HORARIO.DISPONIBLE, ESTADOS_HORARIO.BLOQUEADO]);
+    if (!horario || horario.estado !== ESTADOS_HORARIO.DISPONIBLE) {
+      throw new ErrorDeDominio('Solo puedes eliminar horarios disponibles.');
+    }
+    if (!esFuturo(horario.fecha, horario.hora)) throw new ErrorDeDominio('No se pueden eliminar horarios pasados.');
     storage.eliminar('horarios', horarioId);
     notificarCambioDeAgenda({
       rol,
       medico: obtenerMedico(horario.medicoId),
-      titulo: 'Agenda actualizada',
-      mensaje: `Se eliminó el horario del ${formatearFecha(horario.fecha)} a las ${horario.hora}.`,
+      mensaje: `Se eliminó el horario de atención del ${formatearFecha(horario.fecha)} a las ${horario.hora}.`,
     });
     return horario;
   });
 }
 
-function alternarBloqueo({ horarioId, rol }) {
-  return storage.ejecutarTransaccion(() => {
-    const horario = storage.obtenerPorId('horarios', horarioId);
-    validarHorarioModificable(horario, [ESTADOS_HORARIO.DISPONIBLE, ESTADOS_HORARIO.BLOQUEADO]);
-    const bloquear = horario.estado === ESTADOS_HORARIO.DISPONIBLE;
-    const actualizado = storage.actualizar('horarios', horarioId, {
-      estado: bloquear ? ESTADOS_HORARIO.BLOQUEADO : ESTADOS_HORARIO.DISPONIBLE,
-    });
-    notificarCambioDeAgenda({
-      rol,
-      medico: obtenerMedico(horario.medicoId),
-      titulo: 'Agenda actualizada',
-      mensaje: `El horario del ${formatearFecha(horario.fecha)} a las ${horario.hora} fue ${bloquear ? 'bloqueado' : 'liberado'}.`,
-    });
-    return actualizado;
-  });
-}
-
-function renderizarFilaMedico(medico) {
-  const conteo = contarPorEstado(storage.filtrar('horarios', (horario) => horario.medicoId === medico.id && horario.fecha >= hoyISO()));
+function renderizarListaDeMedicos(medicos, medicoId) {
   return `
-    <li>
-      <a class="fila-medico" href="${construirHash(ID_MODULO, { medico: medico.id })}">
-        ${renderizarAvatarMedico(medico, 'tarjeta')}
-        <span class="fila-medico__info">
-          <strong>${escaparHtml(medico.nombre)}</strong>
-          <small>${escaparHtml(medico.especialidad?.nombre ?? '')} · ${escaparHtml(medico.consultorio)}</small>
-        </span>
-        <span class="fila-medico__conteos">
-          <span class="insignia insignia--exito">${conteo.disponible} libres</span>
-          <span class="insignia insignia--info">${conteo.ocupado} ocupados</span>
-          <span class="insignia insignia--neutro">${conteo.bloqueado} bloqueados</span>
-        </span>
-        ${icono('chevronDerecha', 'fila-medico__ir')}
-      </a>
-    </li>`;
-}
-
-function renderizarPasoMedico(contexto) {
-  const medicos = listarMedicosGestionables(contexto);
-  if (!medicos.length) {
-    return `<section class="panel">${renderizarVacio({ iconoVacio: 'estetoscopio', titulo: 'No hay agendas disponibles para gestionar' })}</section>`;
-  }
-  return `
-    <section class="panel">
-      <h2 class="panel__titulo">Selecciona un médico</h2>
-      <ul class="lista-citas">${medicos.map(renderizarFilaMedico).join('')}</ul>
+    <section class="panel" aria-labelledby="tituloMedicos">
+      <header class="gestion-agenda__cabecera">
+        <h2 class="panel__titulo" id="tituloMedicos">Médicos registrados</h2>
+        <p>Selecciona un médico para consultar su agenda.</p>
+      </header>
+      <ul class="medicos-agenda">
+        ${medicos.map((medico) => `
+          <li>
+            <button class="medico-agenda${medico.id === medicoId ? ' medico-agenda--seleccionado' : ''}" type="button" data-accion="seleccionar-medico" data-medico="${escaparHtml(medico.id)}" aria-pressed="${medico.id === medicoId}">
+              ${renderizarAvatarMedico(medico)}
+              <span class="medico-agenda__info">
+                <strong>${escaparHtml(medico.nombre)}</strong>
+                <small>${escaparHtml(medico.especialidad?.nombre ?? '')}</small>
+              </span>
+              ${medico.id === medicoId ? icono('check', 'medico-agenda__marca') : ''}
+            </button>
+          </li>`).join('')}
+      </ul>
     </section>`;
 }
 
-function renderizarCelda(horario, seleccionadoId) {
-  if (!horario) return '<td><span class="celda-agenda celda-agenda--vacia" aria-label="Sin registrar">—</span></td>';
-  const pasado = !esFuturo(horario.fecha, horario.hora);
-  const seleccionado = horario.id === seleccionadoId;
-  const clases = ['celda-agenda', `celda-agenda--${horario.estado}`, seleccionado && 'celda-agenda--seleccionada', pasado && 'celda-agenda--pasada']
-    .filter(Boolean).join(' ');
+function renderizarCelda(fecha, hora, horario, seleccion) {
+  const seleccionada = seleccion?.fecha === fecha && seleccion?.hora === hora;
+  const etiqueta = horario ? ETIQUETAS_DE_ESTADO[horario.estado] : 'Sin registrar';
+  const clases = [
+    'celda-agenda',
+    `celda-agenda--${horario ? horario.estado : 'vacia'}`,
+    seleccionada && 'celda-agenda--seleccionada',
+    !esFuturo(fecha, hora) && 'celda-agenda--pasada',
+  ].filter(Boolean).join(' ');
   return `
     <td>
-      <button class="${clases}" type="button" data-accion="seleccionar-horario" data-horario="${escaparHtml(horario.id)}"
-        aria-pressed="${seleccionado}" aria-label="${escaparHtml(`${formatearDiaCorto(horario.fecha)} ${horario.hora}: ${ETIQUETAS_DE_ESTADO[horario.estado]}${seleccionado ? ', seleccionado' : ''}`)}">
-        ${ETIQUETAS_DE_ESTADO[horario.estado]}
+      <button class="${clases}" type="button" data-accion="seleccionar-horario" data-fecha="${fecha}" data-hora="${escaparHtml(hora)}"
+        aria-pressed="${seleccionada}" aria-label="${escaparHtml(`${formatearDiaCorto(fecha)} ${hora}: ${etiqueta}${seleccionada ? ', seleccionado' : ''}`)}">
+        ${etiqueta}${seleccionada ? '<small>Seleccionado</small>' : ''}
       </button>
     </td>`;
 }
 
-function renderizarTablaSemanal(horarios, lunes, seleccionadoId) {
+function renderizarTablaSemanal(horarios, lunes, seleccion) {
   const dias = Array.from({ length: DIAS_POR_SEMANA }, (_, indice) => sumarDias(lunes, indice));
   const horas = [...new Set(horarios.map((horario) => horario.hora))].sort();
   const porClave = new Map(horarios.map((horario) => [`${horario.fecha}|${horario.hora}`, horario]));
   return `
-    <div class="agenda-semanal__tabla-contenedor" role="region" aria-label="Agenda semanal" tabindex="0">
+    <div class="agenda-semanal__tabla-contenedor" role="region" aria-label="Agenda semanal desplazable" tabindex="0">
       <table class="agenda-semanal__tabla">
         <thead>
           <tr>
@@ -218,56 +177,45 @@ function renderizarTablaSemanal(horarios, lunes, seleccionadoId) {
           ${horas.map((hora) => `
             <tr>
               <th scope="row">${escaparHtml(hora)}</th>
-              ${dias.map((dia) => renderizarCelda(porClave.get(`${dia}|${hora}`), seleccionadoId)).join('')}
+              ${dias.map((dia) => renderizarCelda(dia, hora, porClave.get(`${dia}|${hora}`), seleccion)).join('')}
             </tr>`).join('')}
         </tbody>
       </table>
     </div>`;
 }
 
-function renderizarSeleccion(horario) {
-  if (!horario) return '<p class="agenda-semanal__seleccion">Selecciona un horario de la tabla para modificarlo.</p>';
-  const detalleCita = horario.citaId
-    ? ` · <a href="${construirHash('detalle-cita', { id: horario.citaId })}">Ver cita ${escaparHtml(horario.citaId)}</a>`
-    : '';
-  return `<p class="agenda-semanal__seleccion"><strong>${escaparHtml(formatearFechaLarga(horario.fecha))}, ${escaparHtml(horario.hora)}</strong> ${insigniaEstado(horario.estado)}${detalleCita}</p>`;
-}
-
-function renderizarAcciones(horario) {
-  const modificable = Boolean(horario)
-    && horario.estado !== ESTADOS_HORARIO.OCUPADO
-    && esFuturo(horario.fecha, horario.hora);
-  const bloqueado = horario?.estado === ESTADOS_HORARIO.BLOQUEADO;
+function renderizarLeyenda() {
+  const elementos = [
+    ['disponible', 'Disponible'],
+    ['ocupado', 'Ocupado'],
+    ['bloqueado', 'Bloqueado'],
+    ['seleccionada', 'Seleccionado'],
+  ];
   return `
-    <div class="agenda-semanal__acciones">
-      <button class="boton boton--primario" type="button" data-accion="agregar-horario">${icono('mas')}Agregar horario</button>
-      <button class="boton boton--secundario" type="button" data-accion="alternar-bloqueo"${modificable ? '' : ' disabled'}>
-        ${icono('bloquear')}${bloqueado ? 'Liberar horario' : 'Bloquear horario'}
-      </button>
-      <button class="boton boton--peligro-suave" type="button" data-accion="eliminar-horario"${modificable ? '' : ' disabled'}>${icono('papelera')}Eliminar horario</button>
-    </div>`;
+    <ul class="agenda-semanal__leyenda" aria-label="Leyenda de horarios">
+      ${elementos.map(([clase, texto]) => `<li><span class="agenda-semanal__muestra agenda-semanal__muestra--${clase}" aria-hidden="true"></span>${texto}</li>`).join('')}
+    </ul>`;
 }
 
-function renderizarPasoAgenda(estado, contexto) {
+function renderizarAgenda(estado) {
   const medico = obtenerMedico(estado.medicoId);
-  if (!medico) return `<section class="panel">${renderizarVacio({ iconoVacio: 'alerta', titulo: 'Médico no encontrado' })}</section>`;
-
   const horarios = listarHorariosDeSemana(medico.id, estado.lunes);
-  const horarioSeleccionado = horarios.find((horario) => horario.id === estado.horarioId) ?? null;
-  const conteo = contarPorEstado(horarios);
+  const horarioSeleccionado = buscarHorario(medico.id, estado.seleccion);
   const lunesActual = obtenerLunes(hoyISO());
   const puedeRetroceder = estado.lunes > lunesActual;
   const puedeAvanzar = estado.lunes < sumarDias(lunesActual, SEMANAS_ADELANTE * 7);
+  const puedeEliminar = horarioSeleccionado?.estado === ESTADOS_HORARIO.DISPONIBLE
+    && esFuturo(horarioSeleccionado.fecha, horarioSeleccionado.hora);
+  const textoSeleccion = estado.seleccion
+    ? `${formatearFechaLarga(estado.seleccion.fecha)}, ${estado.seleccion.hora}`
+    : 'Ninguno';
 
   return `
-    <section class="panel agenda-semanal">
+    <section class="panel agenda-semanal" aria-labelledby="tituloAgenda">
       <header class="agenda-semanal__cabecera">
-        <div class="agenda-semanal__medico">
-          ${renderizarAvatarMedico(medico, 'tarjeta')}
-          <div>
-            <h2 class="panel__titulo">${escaparHtml(medico.nombre)}</h2>
-            <p>${escaparHtml(medico.especialidad?.nombre ?? '')}</p>
-          </div>
+        <div>
+          <h2 class="panel__titulo" id="tituloAgenda">Agenda del médico seleccionado</h2>
+          <p>${escaparHtml(medico.nombre)} · ${escaparHtml(medico.especialidad?.nombre ?? '')}</p>
         </div>
         <div class="agenda-semanal__navegacion">
           <button class="boton-icono boton-icono--claro" type="button" data-accion="semana-anterior" aria-label="Semana anterior"${puedeRetroceder ? '' : ' disabled'}>${icono('chevronIzquierda')}</button>
@@ -276,34 +224,15 @@ function renderizarPasoAgenda(estado, contexto) {
         </div>
       </header>
       ${horarios.length
-    ? renderizarTablaSemanal(horarios, estado.lunes, estado.horarioId)
-    : renderizarVacio({ iconoVacio: 'agenda', titulo: 'Este médico no tiene horarios registrados en esta semana' })}
-      <ul class="agenda-semanal__leyenda" aria-label="Resumen de la semana">
-        <li><span class="insignia insignia--exito">${conteo.disponible} libres</span></li>
-        <li><span class="insignia insignia--info">${conteo.ocupado} ocupados</span></li>
-        <li><span class="insignia insignia--neutro">${conteo.bloqueado} bloqueados</span></li>
-      </ul>
-      ${renderizarSeleccion(horarioSeleccionado)}
-      ${renderizarAcciones(horarioSeleccionado)}
-      ${contexto.rol === 'administrador' ? `<button class="boton boton--fantasma" type="button" data-accion="cambiar-medico">${icono('flechaIzquierda')}Cambiar de médico</button>` : ''}
-    </section>`;
-}
-
-function renderizarPasoConfirmacion(estado, contexto) {
-  const { titulo, horario } = estado.resultado;
-  const medico = obtenerMedico(horario.medicoId);
-  return `
-    <section class="panel exito-reserva">
-      <span class="exito-reserva__anillo"><span>${icono('check')}</span></span>
-      <h2 class="exito-reserva__titulo" data-titulo-paso tabindex="-1">${escaparHtml(titulo)}</h2>
-      <div class="ticket">
-        <div class="ticket__fila">${icono('estetoscopio')}<span>Médico</span><b>${escaparHtml(medico.nombre)}</b></div>
-        <div class="ticket__fila">${icono('calendario')}<span>Fecha</span><b>${escaparHtml(formatearFechaLarga(horario.fecha))}</b></div>
-        <div class="ticket__fila">${icono('reloj')}<span>Hora</span><b>${escaparHtml(horario.hora)}</b></div>
-      </div>
-      <div class="exito-reserva__acciones">
-        <button class="boton boton--primario" type="button" data-accion="seguir-gestionando">${icono('agenda')}Seguir gestionando la agenda</button>
-        ${contexto.rol === 'administrador' ? `<button class="boton boton--secundario" type="button" data-accion="cambiar-medico">Cambiar de médico</button>` : ''}
+    ? renderizarTablaSemanal(horarios, estado.lunes, estado.seleccion)
+    : renderizarVacio({ iconoVacio: 'agenda', titulo: 'Este médico no tiene horarios registrados', mensaje: 'Puedes agregar su primer horario de atención.' })}
+      ${renderizarLeyenda()}
+      <div class="agenda-semanal__acciones-area">
+        <p class="agenda-semanal__seleccion">Horario seleccionado: <strong>${escaparHtml(textoSeleccion)}</strong></p>
+        <div class="agenda-semanal__acciones">
+          <button class="boton boton--primario" type="button" data-accion="agregar-horario">${icono('mas')}Agregar horario de atención</button>
+          <button class="boton boton--secundario" type="button" data-accion="eliminar-horario"${puedeEliminar ? '' : ' disabled'}>Eliminar horario de atención</button>
+        </div>
       </div>
     </section>`;
 }
@@ -319,128 +248,111 @@ function renderizarFormularioHorario(medico, fechaInicial, horaInicial) {
       <label class="campo__etiqueta" for="horaNuevoHorario">Hora</label>
       <input class="entrada" id="horaNuevoHorario" type="time" min="${HORA_MINIMA}" max="${HORA_MAXIMA}" step="300" value="${escaparHtml(horaInicial)}" required>
     </div>
+    <p class="modal__texto">Solo se pueden agregar horarios en espacios sin registrar.</p>
     <p class="campo__error" id="errorNuevoHorario" role="alert" hidden></p>`;
 }
 
-function leerFormularioHorario(modal) {
-  const fecha = modal.querySelector('#fechaNuevoHorario').value;
-  const hora = modal.querySelector('#horaNuevoHorario').value;
-  const error = modal.querySelector('#errorNuevoHorario');
-  if (!fecha || !hora) {
-    error.textContent = 'Completa la fecha y la hora.';
-    error.hidden = false;
-    return undefined;
-  }
-  error.hidden = true;
-  return { fecha, hora };
+function mostrarErrorDelFormulario(modal, mensaje) {
+  const marcador = modal.querySelector('#errorNuevoHorario');
+  marcador.textContent = mensaje;
+  marcador.hidden = false;
 }
 
 export default {
   id: ID_MODULO,
-  titulo: 'Gestionar agenda',
+  titulo: 'Gestionar agenda médica',
   icono: 'agenda',
   roles: ['medico', 'administrador'],
   seccion: 'Gestión',
   montar(contenedor, contexto) {
-    const medicoInicial = contexto.rol === 'medico' ? contexto.usuario.id : contexto.params.medico ?? null;
+    const medicos = listarMedicosGestionables(contexto);
+    const medicoInicial = medicos.find((medico) => medico.id === contexto.params.medico) ?? medicos[0];
     const estado = {
-      paso: medicoInicial ? PASO_AGENDA : PASO_MEDICO,
-      medicoId: medicoInicial,
+      medicoId: medicoInicial?.id ?? null,
       lunes: obtenerLunes(hoyISO()),
-      horarioId: null,
-      resultado: null,
+      seleccion: null,
     };
 
     function renderizar() {
-      const contenidoPorPaso = {
-        [PASO_MEDICO]: () => renderizarPasoMedico(contexto),
-        [PASO_AGENDA]: () => renderizarPasoAgenda(estado, contexto),
-        [PASO_CONFIRMACION]: () => renderizarPasoConfirmacion(estado, contexto),
-      };
+      const cuerpo = estado.medicoId
+        ? `<div class="gestion-agenda">${renderizarListaDeMedicos(medicos, estado.medicoId)}${renderizarAgenda(estado)}</div>`
+        : `<section class="panel">${renderizarVacio({ iconoVacio: 'estetoscopio', titulo: 'No hay agendas disponibles para gestionar', mensaje: 'No se encontraron médicos registrados.' })}</section>`;
       contenedor.innerHTML = `
-        ${renderizarEncabezado({ titulo: 'Gestionar agenda' })}
-        ${renderizarStepper(PASOS, estado.paso)}
-        ${contenidoPorPaso[estado.paso]()}`;
-    }
-
-    function completar(titulo, horario) {
-      estado.resultado = { titulo, horario };
-      estado.paso = PASO_CONFIRMACION;
-      estado.horarioId = null;
-      renderizar();
-      contenedor.querySelector('[data-titulo-paso]')?.focus();
-    }
-
-    function ejecutar(operacion) {
-      try {
-        return operacion();
-      } catch (error) {
-        if (!(error instanceof ErrorDeDominio)) throw error;
-        mostrarToast(error.message, 'error');
-        return null;
-      }
+        ${renderizarEncabezado({ titulo: 'Gestionar agenda médica', descripcion: 'Consulta los médicos registrados, revisa sus horarios de atención y gestiona la disponibilidad de la agenda médica.' })}
+        ${cuerpo}`;
     }
 
     async function solicitarNuevoHorario() {
       const medico = obtenerMedico(estado.medicoId);
-      const horarioSeleccionado = storage.obtenerPorId('horarios', estado.horarioId);
-      const datos = await abrirModal({
+      const horario = await abrirModal({
         titulo: 'Agregar horario de atención',
-        contenido: renderizarFormularioHorario(medico, horarioSeleccionado?.fecha ?? sumarDias(hoyISO(), 1), horarioSeleccionado?.hora ?? '08:00'),
+        contenido: renderizarFormularioHorario(medico, estado.seleccion?.fecha ?? sumarDias(hoyISO(), 1), estado.seleccion?.hora ?? '08:00'),
         acciones: [
           { texto: 'Cancelar', valor: null },
           {
             texto: 'Guardar horario',
             variante: 'primario',
             alElegir(modal) {
-              const valores = leerFormularioHorario(modal);
-              if (!valores) return undefined;
+              const fecha = modal.querySelector('#fechaNuevoHorario').value;
+              const hora = modal.querySelector('#horaNuevoHorario').value;
+              if (!fecha || !hora) {
+                mostrarErrorDelFormulario(modal, 'Completa la fecha y la hora.');
+                return undefined;
+              }
               try {
-                return agregarHorario({ medicoId: medico.id, ...valores, rol: contexto.rol });
+                return agregarHorario({ medicoId: medico.id, fecha, hora, rol: contexto.rol });
               } catch (error) {
                 if (!(error instanceof ErrorDeDominio)) throw error;
-                const marcador = modal.querySelector('#errorNuevoHorario');
-                marcador.textContent = error.message;
-                marcador.hidden = false;
+                mostrarErrorDelFormulario(modal, error.message);
                 return undefined;
               }
             },
           },
         ],
       });
-      if (datos) completar('Horario agregado correctamente', datos);
+      if (!horario) return;
+      estado.seleccion = { fecha: horario.fecha, hora: horario.hora };
+      estado.lunes = obtenerLunes(horario.fecha);
+      renderizar();
+      mostrarToast(`Horario agregado correctamente: ${formatearFecha(horario.fecha)} a las ${horario.hora}.`);
     }
 
     async function solicitarEliminacion() {
-      const horario = storage.obtenerPorId('horarios', estado.horarioId);
+      const horario = buscarHorario(estado.medicoId, estado.seleccion);
       if (!horario) return;
       const confirmado = await confirmarAccion({
         titulo: 'Eliminar horario de atención',
-        mensaje: `¿Eliminar el horario del ${formatearFechaLarga(horario.fecha)} a las ${horario.hora}? Esta acción no se puede deshacer.`,
-        textoConfirmar: 'Eliminar horario',
+        mensaje: `¿Eliminar el horario disponible del ${formatearFechaLarga(horario.fecha)} a las ${horario.hora}? Esta acción no se puede deshacer.`,
+        textoConfirmar: 'Eliminar',
         peligro: true,
       });
       if (!confirmado) return;
-      const eliminado = ejecutar(() => eliminarHorario({ horarioId: horario.id, rol: contexto.rol }));
-      if (eliminado) completar('Horario eliminado correctamente', eliminado);
-    }
-
-    function solicitarBloqueo() {
-      const horario = ejecutar(() => alternarBloqueo({ horarioId: estado.horarioId, rol: contexto.rol }));
-      if (!horario) return;
-      const bloqueado = horario.estado === ESTADOS_HORARIO.BLOQUEADO;
-      completar(bloqueado ? 'Horario bloqueado correctamente' : 'Horario liberado correctamente', horario);
+      try {
+        eliminarHorario({ horarioId: horario.id, rol: contexto.rol });
+      } catch (error) {
+        if (!(error instanceof ErrorDeDominio)) throw error;
+        mostrarToast(error.message, 'error');
+        return;
+      }
+      estado.seleccion = null;
+      renderizar();
+      mostrarToast('Horario eliminado correctamente.');
     }
 
     function cambiarSemana(direccion) {
       estado.lunes = sumarDias(estado.lunes, direccion * 7);
-      estado.horarioId = null;
+      estado.seleccion = null;
       renderizar();
     }
 
     const acciones = {
+      'seleccionar-medico': (elemento) => {
+        Object.assign(estado, { medicoId: elemento.dataset.medico, seleccion: null, lunes: obtenerLunes(hoyISO()) });
+        renderizar();
+        contenedor.querySelector('.medico-agenda--seleccionado')?.focus();
+      },
       'seleccionar-horario': (elemento) => {
-        estado.horarioId = estado.horarioId === elemento.dataset.horario ? null : elemento.dataset.horario;
+        estado.seleccion = { fecha: elemento.dataset.fecha, hora: elemento.dataset.hora };
         renderizar();
         contenedor.querySelector('.celda-agenda--seleccionada')?.focus();
       },
@@ -448,12 +360,6 @@ export default {
       'semana-siguiente': () => cambiarSemana(1),
       'agregar-horario': solicitarNuevoHorario,
       'eliminar-horario': solicitarEliminacion,
-      'alternar-bloqueo': solicitarBloqueo,
-      'seguir-gestionando': () => {
-        estado.paso = PASO_AGENDA;
-        renderizar();
-      },
-      'cambiar-medico': () => contexto.navegar(ID_MODULO),
     };
 
     contenedor.addEventListener('click', (evento) => {
@@ -462,8 +368,6 @@ export default {
     });
 
     renderizar();
-    return storage.suscribir(() => {
-      if (estado.paso !== PASO_CONFIRMACION) renderizar();
-    });
+    return storage.suscribir(renderizar);
   },
 };

@@ -1,5 +1,5 @@
 import * as storage from './storage.js';
-import { ahoraISO, compararFechaHora, esFuturo, hoyISO } from './fechas.js';
+import { ahoraISO, combinarFechaHora, compararFechaHora, esFuturo, hoyISO } from './fechas.js';
 
 export const ESTADOS_CITA = Object.freeze({
   PENDIENTE_PAGO: 'Pendiente de pago',
@@ -213,4 +213,29 @@ export function puedeVerCita(cita, sesion) {
 
 export function normalizarTexto(texto) {
   return String(texto ?? '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().trim();
+}
+
+export const MAXIMO_REPROGRAMACIONES = 1;
+export const HORAS_MINIMAS_REEMBOLSO = 24;
+
+export function validarReprogramacion(cita) {
+  const usadas = cita.reprogramaciones ?? (cita.estado === ESTADOS_CITA.REPROGRAMADA ? MAXIMO_REPROGRAMACIONES : 0);
+  return [
+    { texto: 'La cita está activa', cumple: esCitaActiva(cita) },
+    { texto: 'La fecha de la cita aún no ha pasado', cumple: esCitaFutura(cita) },
+    { texto: 'La cita no fue reprogramada antes (solo se permite una vez)', cumple: usadas < MAXIMO_REPROGRAMACIONES },
+  ];
+}
+
+export function puedeReprogramarCita(cita) {
+  return validarReprogramacion(cita).every((regla) => regla.cumple);
+}
+
+export function puedeCancelarCita(cita) {
+  return esCitaActiva(cita) && esCitaFutura(cita);
+}
+
+export function corresponderReembolso(cita) {
+  const horasRestantes = (combinarFechaHora(cita.fecha, cita.hora).getTime() - Date.now()) / 3600000;
+  return cita.pago?.estado === ESTADOS_PAGO.PAGADO && horasRestantes > HORAS_MINIMAS_REEMBOLSO;
 }
