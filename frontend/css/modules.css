@@ -2598,3 +2598,44 @@ button.celda-agenda:hover:not(:disabled) {
     gap: 24px;
   }
 }
+
+.tarjeta-medico__consultar {
+  justify-self: start;
+  margin-top: 10px;
+}
+
+.agenda-reserva__sugerencia {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 28px 18px;
+  border: 1px dashed var(--color-borde-fuerte);
+  border-radius: var(--radio-sm);
+  color: var(--color-texto-suave);
+  font-size: .9rem;
+  text-align: center;
+}
+
+.agenda-reserva__sugerencia .icono {
+  color: var(--color-azul-claro);
+}
+
+.subtitulo--separado {
+  margin-top: 20px;
+}
+
+.diagnostico__externos {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  padding-top: 18px;
+  border-top: 1px solid var(--color-borde);
+}
+
+.diagnostico__externos p {
+  flex-basis: 100%;
+  color: var(--color-texto-suave);
+  font-size: .8rem;
+}

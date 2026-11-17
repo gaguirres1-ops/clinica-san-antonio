@@ -24,7 +24,6 @@ import {
   ahoraISO,
   combinarFechaHora,
   desdeISO,
-  formatearDiaCorto,
   formatearFecha,
   formatearFechaLarga,
   formatearMesAnio,
@@ -46,17 +45,17 @@ import {
   renderizarVacio,
 } from '../core/ui.js';
 
-const PASOS = ['Médico', 'Disponibilidad', 'Horario', 'Confirmación'];
-const TITULOS_DE_PASO = ['Selecciona un médico', 'Consulta su disponibilidad', 'Elige un horario', 'Revisa y confirma tu cita'];
+const PASOS = ['Médico', 'Fecha y horario', 'Confirmación'];
+const TITULOS_DE_PASO = ['Selecciona un médico', 'Selecciona fecha y horario', 'Revisa y confirma tu cita'];
 const SUBTITULOS_DE_PASO = [
-  'Busca por nombre o filtra por especialidad. Solo se muestran médicos activos.',
-  'Los días resaltados tienen horarios libres. Selecciona la fecha de tu preferencia.',
-  'Los horarios tachados ya fueron reservados por otros pacientes.',
+  'Busca por nombre o filtra por especialidad y elige con quién deseas atenderte.',
+  'Elige un día con horarios libres y luego el horario de tu preferencia.',
   'Verifica los datos antes de confirmar. La cita quedará pendiente de pago.',
 ];
+const PASO_MEDICO = 0;
+const PASO_FECHA_Y_HORARIO = 1;
 const PASO_EXITO = PASOS.length;
 const DIAS_DE_LA_SEMANA = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'];
-const LIMITE_FECHAS_SUGERIDAS = 6;
 const LIMITE_MOTIVO = 250;
 const MINUTOS_MINIMOS_PARA_PAGAR = 30;
 const MINUTOS_ANTES_DE_LA_CITA = 60;
@@ -65,7 +64,7 @@ const DEMORA_DE_CONFIRMACION_MS = 500;
 
 function crearEstadoInicial() {
   return {
-    paso: 0,
+    paso: PASO_MEDICO,
     busqueda: '',
     especialidadId: 'todas',
     medicoId: null,
@@ -183,22 +182,20 @@ function filtrarMedicos(medicos, { busqueda, especialidadId }) {
 }
 
 function renderizarTarjetaMedico(medico, seleccionado) {
-  const proximaFecha = proximaFechaDisponible(medico.id);
+  const hayDisponibilidad = Boolean(proximaFechaDisponible(medico.id));
+  const accion = hayDisponibilidad
+    ? `<button class="boton boton--suave boton--pequeno tarjeta-medico__consultar" type="button" data-accion="consultar-disponibilidad" data-id="${escaparHtml(medico.id)}">${icono('calendario')}Consultar disponibilidad</button>`
+    : `<span class="tarjeta-medico__disponibilidad tarjeta-medico__disponibilidad--agotada">${icono('alerta')}Sin horarios disponibles</span>`;
   return `
-    <button class="tarjeta-medico${seleccionado ? ' tarjeta-medico--seleccionada' : ''}" type="button"
-      data-accion="elegir-medico" data-id="${escaparHtml(medico.id)}" aria-pressed="${seleccionado}" ${proximaFecha ? '' : 'disabled'}>
+    <article class="tarjeta-medico${seleccionado ? ' tarjeta-medico--seleccionada' : ''}">
       ${renderizarAvatarMedico(medico, 'grande')}
-      <span class="tarjeta-medico__cuerpo">
+      <div class="tarjeta-medico__cuerpo">
         <span class="tarjeta-medico__especialidad">${escaparHtml(medico.especialidad?.nombre ?? '')}</span>
         <strong class="tarjeta-medico__nombre">${escaparHtml(medico.nombre)}</strong>
         <span class="tarjeta-medico__dato">CMP ${escaparHtml(medico.cmp)} · ${formatearMoneda(medico.tarifa)}</span>
-        <span class="tarjeta-medico__disponibilidad${proximaFecha ? '' : ' tarjeta-medico__disponibilidad--agotada'}">
-          ${icono(proximaFecha ? 'calendario' : 'alerta')}
-          ${proximaFecha ? `Próximo cupo: ${escaparHtml(formatearDiaCorto(proximaFecha))}` : 'Sin horarios disponibles'}
-        </span>
-      </span>
-      ${seleccionado ? `<span class="tarjeta-medico__marca">${icono('check')}</span>` : ''}
-    </button>`;
+        ${accion}
+      </div>
+    </article>`;
 }
 
 function renderizarListaMedicos(estado) {
@@ -238,7 +235,7 @@ function renderizarMedicoElegido(medico) {
         <strong>${escaparHtml(medico.nombre)}</strong>
         <small>${escaparHtml(medico.especialidad?.nombre ?? '')} · ${escaparHtml(medico.consultorio)}</small>
       </div>
-      <button class="boton boton--fantasma boton--pequeno" type="button" data-accion="ir-a-paso" data-paso="0">Cambiar</button>
+      <button class="boton boton--fantasma boton--pequeno" type="button" data-accion="ir-a-paso" data-paso="${PASO_MEDICO}">Cambiar</button>
     </div>`;
 }
 
@@ -279,37 +276,6 @@ function renderizarCalendario(estado, disponibilidad) {
     </div>`;
 }
 
-function renderizarFechasSugeridas(estado, disponibilidad) {
-  const sugeridas = [...disponibilidad.entries()].filter(([, dia]) => dia.libres > 0).slice(0, LIMITE_FECHAS_SUGERIDAS);
-  if (!sugeridas.length) return renderizarAviso({ tipo: 'alerta', mensaje: 'Este médico no tiene horarios libres en las próximas semanas.' });
-  return `
-    <ul class="fechas-sugeridas">
-      ${sugeridas.map(([fecha, dia]) => `
-        <li>
-          <button class="fecha-sugerida" type="button" data-accion="elegir-fecha" data-fecha="${fecha}" aria-pressed="${fecha === estado.fecha}">
-            <span class="fecha-sugerida__dia">${escaparHtml(formatearDiaCorto(fecha))}</span>
-            <span class="fecha-sugerida__cupos">${dia.libres} de ${dia.total} libres</span>
-          </button>
-        </li>`).join('')}
-    </ul>`;
-}
-
-function renderizarPasoDisponibilidad(estado, medico) {
-  const disponibilidad = disponibilidadPorFecha(medico.id);
-  return `
-    ${renderizarMedicoElegido(medico)}
-    <div class="agenda-reserva">
-      <div>
-        <h3 class="subtitulo">Calendario de atención</h3>
-        ${renderizarCalendario(estado, disponibilidad)}
-      </div>
-      <div>
-        <h3 class="subtitulo">Próximas fechas con cupos</h3>
-        ${renderizarFechasSugeridas(estado, disponibilidad)}
-      </div>
-    </div>`;
-}
-
 function renderizarFranja(horario, seleccionado) {
   const reservable = esHorarioReservable(horario);
   const motivoNoDisponible = horario.estado === ESTADOS_HORARIO.OCUPADO ? 'Ocupado' : horario.estado === ESTADOS_HORARIO.BLOQUEADO ? 'No disponible' : 'Hora pasada';
@@ -331,20 +297,33 @@ function renderizarGrupoDeFranjas(titulo, iconoGrupo, horarios, estado) {
     </section>`;
 }
 
-function renderizarPasoHorario(estado, medico) {
+function renderizarHorariosDelDia(estado, medico) {
+  if (!estado.fecha) {
+    return `<p class="agenda-reserva__sugerencia">${icono('calendario')}Elige una fecha para ver los horarios</p>`;
+  }
   const horarios = horariosDelMedico(medico.id, estado.fecha);
   const manana = horarios.filter((horario) => aMinutos(horario.hora) < INICIO_TURNO_TARDE);
   const tarde = horarios.filter((horario) => aMinutos(horario.hora) >= INICIO_TURNO_TARDE);
   return `
-    ${renderizarMedicoElegido(medico)}
-    <div class="fecha-elegida">
-      ${icono('calendario')}
-      <strong>${escaparHtml(formatearFechaLarga(estado.fecha))}</strong>
-      <button class="boton boton--fantasma boton--pequeno" type="button" data-accion="ir-a-paso" data-paso="1">Cambiar fecha</button>
-    </div>
     <div class="franjas">
       ${renderizarGrupoDeFranjas('Mañana', 'sol', manana, estado)}
       ${renderizarGrupoDeFranjas('Tarde', 'luna', tarde, estado)}
+    </div>`;
+}
+
+function renderizarPasoFechaYHorario(estado, medico) {
+  const disponibilidad = disponibilidadPorFecha(medico.id);
+  return `
+    ${renderizarMedicoElegido(medico)}
+    <div class="agenda-reserva">
+      <div>
+        <h3 class="subtitulo">Selecciona una fecha</h3>
+        ${renderizarCalendario(estado, disponibilidad)}
+      </div>
+      <div>
+        <h3 class="subtitulo">Horarios disponibles</h3>
+        ${renderizarHorariosDelDia(estado, medico)}
+      </div>
     </div>
     <div class="campo campo--motivo">
       <label class="campo__etiqueta" for="motivoConsulta">Motivo de consulta <span class="campo__opcional">(opcional)</span></label>
@@ -378,9 +357,8 @@ function renderizarError(estado) {
 }
 
 function puedeAvanzar(estado) {
-  if (estado.paso === 0) return Boolean(estado.medicoId && proximaFechaDisponible(estado.medicoId));
-  if (estado.paso === 1) return Boolean(estado.fecha);
-  if (estado.paso === 2) return esHorarioReservable(storage.obtenerPorId('horarios', estado.horarioId));
+  if (estado.paso === PASO_MEDICO) return Boolean(estado.medicoId && proximaFechaDisponible(estado.medicoId));
+  if (estado.paso === PASO_FECHA_Y_HORARIO) return esHorarioReservable(storage.obtenerPorId('horarios', estado.horarioId));
   return false;
 }
 
@@ -450,8 +428,7 @@ function renderizarAsistente(estado, paciente) {
   const medico = estado.medicoId ? obtenerMedico(estado.medicoId) : null;
   const contenidoPorPaso = [
     () => renderizarPasoMedico(estado),
-    () => renderizarPasoDisponibilidad(estado, medico),
-    () => renderizarPasoHorario(estado, medico),
+    () => renderizarPasoFechaYHorario(estado, medico),
     () => renderizarPasoConfirmacion(estado, medico, paciente),
   ];
   return `
@@ -479,7 +456,7 @@ function aplicarParametrosIniciales(estado, params) {
   if (medico?.activo && proximaFechaDisponible(medico.id)) {
     estado.medicoId = medico.id;
     estado.mesVisible = mesDeFecha(proximaFechaDisponible(medico.id));
-    estado.paso = 1;
+    estado.paso = PASO_FECHA_Y_HORARIO;
   }
 }
 
@@ -498,7 +475,7 @@ export default {
     function renderizar({ enfocarTitulo = false } = {}) {
       const contenido = estado.paso === PASO_EXITO ? renderizarExito(estado) : renderizarAsistente(estado, paciente);
       contenedor.innerHTML = `
-        ${renderizarEncabezado({ titulo: 'Reservar cita', descripcion: 'Agenda tu atención en cuatro pasos con el especialista de tu preferencia.' })}
+        ${renderizarEncabezado({ titulo: 'Reservar cita', descripcion: 'Agenda tu atención en tres pasos con el especialista de tu preferencia.' })}
         ${contenido}`;
       if (enfocarTitulo) contenedor.querySelector('[data-titulo-paso]')?.focus();
     }
@@ -556,7 +533,7 @@ export default {
           estado.error = esReglaDeNegocio ? error.message : 'No se pudo registrar la cita. Inténtalo nuevamente.';
           if (error.codigo === 'horario-no-disponible') {
             estado.horarioId = null;
-            estado.paso = 2;
+            estado.paso = PASO_FECHA_Y_HORARIO;
           }
           renderizar({ enfocarTitulo: true });
           mostrarToast(estado.error, 'error');
@@ -569,7 +546,10 @@ export default {
         estado.especialidadId = boton.dataset.id;
         renderizar();
       },
-      'elegir-medico': (boton) => elegirMedico(boton.dataset.id),
+      'consultar-disponibilidad': (boton) => {
+        elegirMedico(boton.dataset.id);
+        irAPaso(PASO_FECHA_Y_HORARIO);
+      },
       'elegir-fecha': (boton) => elegirFecha(boton.dataset.fecha),
       'cambiar-mes': (boton) => cambiarMes(Number(boton.dataset.direccion)),
       'elegir-horario': (boton) => {
@@ -617,7 +597,7 @@ export default {
       const horarioElegido = estado.horarioId ? storage.obtenerPorId('horarios', estado.horarioId) : null;
       if (estado.horarioId && !esHorarioReservable(horarioElegido)) {
         estado.horarioId = null;
-        if (estado.paso === 3) estado.paso = 2;
+        if (estado.paso === PASOS.length - 1) estado.paso = PASO_FECHA_Y_HORARIO;
         estado.error = 'El horario que habías elegido acaba de ser reservado desde otra sesión. Selecciona otro.';
         mostrarToast('Un horario de tu selección se ocupó.', 'info');
       }

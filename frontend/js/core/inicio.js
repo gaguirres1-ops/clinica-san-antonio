@@ -5,9 +5,10 @@ import {
   esCitaActiva,
   esCitaFutura,
   listarCitas,
+  listarCitasPorAtender,
   listarMedicos,
 } from './dominio.js';
-import { esFuturo, formatearFecha, hoyISO, sumarDias } from './fechas.js';
+import { esFuturo, formatearFecha, hoyISO } from './fechas.js';
 import { construirHash } from './navigation.js';
 import {
   escaparHtml,
@@ -154,40 +155,26 @@ function renderizarInicioPaciente({ usuario }, filtroActivo) {
 }
 
 function renderizarInicioMedico({ usuario }) {
-  const hoy = hoyISO();
-  const finDeSemana = sumarDias(hoy, 7);
-  const citasDelMedico = listarCitas((cita) => cita.medicoId === usuario.id && esCitaActiva(cita));
-  const deHoy = citasDelMedico.filter((cita) => cita.fecha === hoy);
-  const proximas = citasDelMedico.filter((cita) => esCitaFutura(cita));
-  const semana = proximas.filter((cita) => cita.fecha <= finDeSemana);
-  const porAtender = citasDelMedico.filter((cita) => !esCitaFutura(cita) && cita.estado !== ESTADOS_CITA.PENDIENTE_PAGO);
-  const horariosLibres = storage.contar('horarios', (horario) => horario.medicoId === usuario.id
-    && horario.estado === ESTADOS_HORARIO.DISPONIBLE
-    && horario.fecha >= hoy
-    && horario.fecha <= finDeSemana
-    && esFuturo(horario.fecha, horario.hora));
+  const porAtender = listarCitasPorAtender(usuario.id);
+  const idsPorAtender = new Set(porAtender.map((cita) => cita.id));
+  const proximas = listarCitas((cita) => cita.medicoId === usuario.id && esCitaActiva(cita) && esCitaFutura(cita))
+    .filter((cita) => !idsPorAtender.has(cita.id));
 
   return `
-    ${renderizarEncabezado({ titulo: `Buen día, ${usuario.nombre.split(' ').slice(0, 2).join(' ')}`, conMigas: false })}
-    <div class="indicadores">
-      ${renderizarIndicador({ iconoIndicador: 'calendario', etiqueta: 'Citas de hoy', valor: String(deHoy.length) })}
-      ${renderizarIndicador({ iconoIndicador: 'usuarios', etiqueta: 'Próximos 7 días', valor: String(semana.length) })}
-      ${renderizarIndicador({ iconoIndicador: 'diagnostico', etiqueta: 'Por registrar', valor: String(porAtender.length), variante: porAtender.length ? 'alerta' : '' })}
-      ${renderizarIndicador({ iconoIndicador: 'agenda', etiqueta: 'Horarios libres', valor: String(horariosLibres) })}
-    </div>
+    ${renderizarEncabezado({ titulo: 'Citas por atender', conMigas: false })}
     <div class="rejilla-inicio">
       ${renderizarSeccionCitas({
-        titulo: 'Agenda próxima',
-        citas: proximas,
-        mostrar: 'paciente',
-        vacio: { titulo: 'No hay pacientes programados' },
-      })}
+    titulo: 'Citas por atender',
+    citas: porAtender,
+    mostrar: 'paciente',
+    vacio: { iconoVacio: 'check', titulo: 'Todo al día' },
+  })}
       ${renderizarSeccionCitas({
-        titulo: 'Pendientes de diagnóstico',
-        citas: porAtender.reverse(),
-        mostrar: 'paciente',
-        vacio: { iconoVacio: 'check', titulo: 'Todo al día' },
-      })}
+    titulo: 'Próximas citas',
+    citas: proximas,
+    mostrar: 'paciente',
+    vacio: { titulo: 'No hay pacientes programados' },
+  })}
     </div>`;
 }
 

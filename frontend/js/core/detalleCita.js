@@ -1,6 +1,6 @@
 import * as storage from './storage.js';
-import { ESTADOS_CITA, esCitaActiva, esCitaFutura, obtenerCitaDetallada, puedeCancelarCita, puedeReprogramarCita, puedeVerCita } from './dominio.js';
-import { formatearFecha, formatearFechaLarga, formatearMomento } from './fechas.js';
+import { ESTADOS_CITA, esCitaActiva, esCitaFutura, obtenerCitaDetallada, puedeCancelarCita, puedeRegistrarDiagnostico, puedeReprogramarCita, puedeVerCita } from './dominio.js';
+import { desdeISO, formatearFecha, formatearFechaLarga, formatearMomento } from './fechas.js';
 import { construirHash, puedeAcceder } from './navigation.js';
 import {
   escaparHtml,
@@ -24,8 +24,8 @@ const ACCIONES_DISPONIBLES = [
     aplica: (cita) => esCitaActiva(cita) && esCitaFutura(cita),
   },
   {
-    ruta: 'diagnostico', texto: 'Registrar diagnóstico', iconoAccion: 'diagnostico', variante: 'primario',
-    aplica: (cita) => [ESTADOS_CITA.CONFIRMADA, ESTADOS_CITA.REPROGRAMADA].includes(cita.estado) && !cita.diagnostico,
+    ruta: 'diagnostico', texto: 'Diagnóstico', iconoAccion: 'diagnostico', variante: 'primario',
+    aplica: puedeRegistrarDiagnostico,
   },
   {
     ruta: 'cancelar-cita', texto: 'Cancelar cita', iconoAccion: 'cancelar', variante: 'peligro-suave',
@@ -104,6 +104,43 @@ function renderizarAcciones(cita, rol) {
     </section>`;
 }
 
+function calcularEdad(fechaNacimiento) {
+  const nacimiento = desdeISO(fechaNacimiento);
+  const hoy = new Date();
+  const cumplioAnio = hoy.getMonth() > nacimiento.getMonth()
+    || (hoy.getMonth() === nacimiento.getMonth() && hoy.getDate() >= nacimiento.getDate());
+  return hoy.getFullYear() - nacimiento.getFullYear() - (cumplioAnio ? 0 : 1);
+}
+
+function renderizarInformacionDelPaciente(cita) {
+  const { paciente } = cita;
+  if (!paciente) return '';
+  const historial = storage
+    .filtrar('historialClinico', (registro) => registro.pacienteId === paciente.id && registro.citaId !== cita.id)
+    .sort((a, b) => b.fecha.localeCompare(a.fecha))
+    .slice(0, 5);
+  return `
+    <section class="panel">
+      <header class="panel__cabecera"><h2 class="panel__titulo">Información del paciente</h2></header>
+      <dl class="lista-datos lista-datos--apilada">
+        <div><dt>Paciente</dt><dd>${escaparHtml(paciente.nombre)}</dd></div>
+        <div><dt>Edad y sexo</dt><dd>${calcularEdad(paciente.fechaNacimiento)} años · ${paciente.sexo === 'F' ? 'Femenino' : 'Masculino'}</dd></div>
+        <div><dt>Teléfono</dt><dd>${escaparHtml(paciente.telefono)}</dd></div>
+        <div><dt>Seguro</dt><dd>${escaparHtml(paciente.seguro)}</dd></div>
+        <div><dt>Alergias</dt><dd>${escaparHtml(paciente.alergias)}</dd></div>
+      </dl>
+      <h3 class="subtitulo subtitulo--separado">Historial clínico previo</h3>
+      ${historial.length ? `
+        <ul class="diagnostico__historial">
+          ${historial.map((registro) => `
+            <li>
+              <time datetime="${escaparHtml(registro.fecha)}">${escaparHtml(formatearFecha(registro.fecha))}</time>
+              <strong>${escaparHtml(registro.diagnostico)} <span class="codigo">${escaparHtml(registro.codigoCie10)}</span></strong>
+            </li>`).join('')}
+        </ul>` : '<p class="diagnostico__sin-historial">Sin diagnósticos previos registrados.</p>'}
+    </section>`;
+}
+
 function renderizarDetalle(cita, rol) {
   const avisoPago = cita.estado === ESTADOS_CITA.PENDIENTE_PAGO && cita.pago
     ? renderizarAviso({ tipo: 'alerta', titulo: 'Pago pendiente', mensaje: `Completa el pago antes del ${formatearMomento(cita.pago.fechaLimite)} para confirmar la cita; de lo contrario, el horario será liberado.` })
@@ -136,6 +173,7 @@ function renderizarDetalle(cita, rol) {
           ${renderizarFila('documento', 'Motivo', escaparHtml(cita.motivo || 'Sin motivo registrado'))}
         </section>
         ${avisoPago}
+        ${rol === 'medico' ? renderizarInformacionDelPaciente(cita) : ''}
         ${renderizarDiagnostico(cita.diagnostico)}
       </div>
       <aside class="detalle-cita__lateral">

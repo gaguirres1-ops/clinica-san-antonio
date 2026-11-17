@@ -51,11 +51,6 @@ function listarHorariosDeSemana(medicoId, lunes) {
     .sort((a, b) => `${a.fecha}${a.hora}`.localeCompare(`${b.fecha}${b.hora}`));
 }
 
-function listarMedicosGestionables({ rol, usuario }) {
-  const medicos = listarMedicos({ soloActivos: false });
-  return rol === 'medico' ? medicos.filter((medico) => medico.id === usuario.id) : medicos;
-}
-
 function buscarHorario(medicoId, seleccion) {
   return seleccion
     ? storage.buscar('horarios', (horario) => horario.medicoId === medicoId && horario.fecha === seleccion.fecha && horario.hora === seleccion.hora)
@@ -71,14 +66,11 @@ function hayCruceDeHorario(medicoId, fecha, hora, duracionMinutos) {
     && inicio < aMinutos(horario.hora) + horario.duracionMinutos));
 }
 
-function notificarCambioDeAgenda({ rol, medico, mensaje }) {
-  const titulo = 'Agenda actualizada';
-  notificar(rol === 'administrador'
-    ? { destinatarioRol: 'medico', destinatarioId: medico.id, titulo, mensaje }
-    : { destinatarioRol: 'administrador', destinatarioId: null, titulo, mensaje: `${medico.nombre}: ${mensaje}` });
+function notificarCambioDeAgenda({ medico, mensaje }) {
+  notificar({ destinatarioRol: 'medico', destinatarioId: medico.id, titulo: 'Agenda actualizada', mensaje });
 }
 
-function agregarHorario({ medicoId, fecha, hora, rol }) {
+function agregarHorario({ medicoId, fecha, hora }) {
   return storage.ejecutarTransaccion(() => {
     const medico = obtenerMedico(medicoId);
     const duracion = medico.jornada.duracionMinutos;
@@ -97,12 +89,12 @@ function agregarHorario({ medicoId, fecha, hora, rol }) {
       estado: ESTADOS_HORARIO.DISPONIBLE,
       citaId: null,
     });
-    notificarCambioDeAgenda({ rol, medico, mensaje: `Se agregó un horario de atención el ${formatearFecha(fecha)} a las ${hora}.` });
+    notificarCambioDeAgenda({ medico, mensaje: `Se agregó un horario de atención el ${formatearFecha(fecha)} a las ${hora}.` });
     return horario;
   });
 }
 
-function eliminarHorario({ horarioId, rol }) {
+function eliminarHorario({ horarioId }) {
   return storage.ejecutarTransaccion(() => {
     const horario = storage.obtenerPorId('horarios', horarioId);
     if (!horario || horario.estado !== ESTADOS_HORARIO.DISPONIBLE) {
@@ -111,7 +103,6 @@ function eliminarHorario({ horarioId, rol }) {
     if (!esFuturo(horario.fecha, horario.hora)) throw new ErrorDeDominio('No se pueden eliminar horarios pasados.');
     storage.eliminar('horarios', horarioId);
     notificarCambioDeAgenda({
-      rol,
       medico: obtenerMedico(horario.medicoId),
       mensaje: `Se eliminó el horario de atención del ${formatearFecha(horario.fecha)} a las ${horario.hora}.`,
     });
@@ -262,10 +253,10 @@ export default {
   id: ID_MODULO,
   titulo: 'Gestionar agenda médica',
   icono: 'agenda',
-  roles: ['medico', 'administrador'],
+  roles: ['administrador'],
   seccion: 'Gestión',
   montar(contenedor, contexto) {
-    const medicos = listarMedicosGestionables(contexto);
+    const medicos = listarMedicos({ soloActivos: false });
     const medicoInicial = medicos.find((medico) => medico.id === contexto.params.medico) ?? medicos[0];
     const estado = {
       medicoId: medicoInicial?.id ?? null,
@@ -300,7 +291,7 @@ export default {
                 return undefined;
               }
               try {
-                return agregarHorario({ medicoId: medico.id, fecha, hora, rol: contexto.rol });
+                return agregarHorario({ medicoId: medico.id, fecha, hora });
               } catch (error) {
                 if (!(error instanceof ErrorDeDominio)) throw error;
                 mostrarErrorDelFormulario(modal, error.message);
@@ -328,7 +319,7 @@ export default {
       });
       if (!confirmado) return;
       try {
-        eliminarHorario({ horarioId: horario.id, rol: contexto.rol });
+        eliminarHorario({ horarioId: horario.id });
       } catch (error) {
         if (!(error instanceof ErrorDeDominio)) throw error;
         mostrarToast(error.message, 'error');

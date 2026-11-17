@@ -239,3 +239,13 @@ export function corresponderReembolso(cita) {
   const horasRestantes = (combinarFechaHora(cita.fecha, cita.hora).getTime() - Date.now()) / 3600000;
   return cita.pago?.estado === ESTADOS_PAGO.PAGADO && horasRestantes > HORAS_MINIMAS_REEMBOLSO;
 }
+
+export function puedeRegistrarDiagnostico(cita) {
+  return [ESTADOS_CITA.CONFIRMADA, ESTADOS_CITA.REPROGRAMADA].includes(cita.estado)
+    && !cita.diagnostico
+    && cita.fecha <= hoyISO();
+}
+
+export function listarCitasPorAtender(medicoId) {
+  return listarCitas((cita) => cita.medicoId === medicoId).filter(puedeRegistrarDiagnostico);
+}

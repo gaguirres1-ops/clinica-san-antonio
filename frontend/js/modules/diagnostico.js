@@ -6,9 +6,10 @@ import {
   notificar,
   obtenerCitaDetallada,
   obtenerMedico,
+  puedeRegistrarDiagnostico,
   registrarEventoCita,
 } from '../core/dominio.js';
-import { ahoraISO, desdeISO, formatearFecha, formatearFechaLarga, hoyISO } from '../core/fechas.js';
+import { ahoraISO, desdeISO, formatearFecha, formatearFechaLarga } from '../core/fechas.js';
 import { construirHash } from '../core/navigation.js';
 import {
   confirmarAccion,
@@ -25,11 +26,10 @@ import {
 } from '../core/ui.js';
 
 const ID_MODULO = 'diagnostico';
-const PASOS = ['Seleccionar cita', 'Registrar diagnóstico', 'Confirmación'];
+const PASOS = ['Identificar cita', 'Diagnóstico', 'Confirmación'];
 const PASO_SELECCION = 0;
 const PASO_REGISTRO = 1;
 const PASO_CONFIRMACION = 2;
-const ESTADOS_ATENDIBLES = [ESTADOS_CITA.CONFIRMADA, ESTADOS_CITA.REPROGRAMADA];
 const LIMITE_HISTORIAL = 5;
 const LONGITUD_MINIMA_TEXTO = 10;
 
@@ -49,11 +49,7 @@ const CATALOGO_CIE10 = [
 const CAMPOS_DEL_FORMULARIO = ['codigoCie10', 'tratamiento', 'indicaciones', 'observaciones'];
 
 function esCitaAtendible(cita, medicoId) {
-  return Boolean(cita)
-    && cita.medicoId === medicoId
-    && ESTADOS_ATENDIBLES.includes(cita.estado)
-    && !cita.diagnostico
-    && cita.fecha <= hoyISO();
+  return Boolean(cita) && cita.medicoId === medicoId && puedeRegistrarDiagnostico(cita);
 }
 
 function listarCitasPorAtender(medicoId) {
@@ -180,7 +176,12 @@ function renderizarPasoRegistro(estado) {
         ${renderizarCampoTexto({ nombre: 'observaciones', etiqueta: 'Observaciones', valor: borrador.observaciones, errores, requerido: false })}
         <div class="acciones-paso">
           <a class="boton boton--secundario" href="${construirHash(ID_MODULO)}">${icono('flechaIzquierda')}Cambiar cita</a>
-          <button class="boton boton--primario" type="submit">${icono('diagnostico')}Guardar diagnóstico</button>
+          <button class="boton boton--primario" type="submit">${icono('diagnostico')}Registrar diagnóstico</button>
+        </div>
+        <div class="diagnostico__externos">
+          <button class="boton boton--secundario" type="button" disabled>${icono('campana')}Enviar diagnóstico a paciente</button>
+          <button class="boton boton--secundario" type="button" disabled>${icono('documento')}Registrar receta médica</button>
+          <p>Estas opciones se habilitan una vez registrado el diagnóstico.</p>
         </div>
       </form>
       <aside class="diagnostico__lateral">
@@ -218,18 +219,20 @@ function renderizarPasoConfirmacion({ resultado }) {
         <div class="ticket__fila">${icono('info')}<span>Estado</span><b>${insigniaEstado(ESTADOS_CITA.ATENDIDA)}</b></div>
       </div>
       <div class="exito-reserva__acciones">
-        <a class="boton boton--primario" href="${construirHash('detalle-cita', { id: cita.id })}">${icono('documento')}Ver detalle de la cita</a>
-        <a class="boton boton--secundario" href="${construirHash(ID_MODULO)}">Atender otra cita</a>
+        <button class="boton boton--primario" type="button" data-accion="enviar-diagnostico">${icono('campana')}Enviar diagnóstico a paciente</button>
+        <button class="boton boton--secundario" type="button" data-accion="registrar-receta">${icono('documento')}Registrar receta médica</button>
+        <a class="boton boton--secundario" href="${construirHash('detalle-cita', { id: cita.id })}">Volver al detalle de cita</a>
       </div>
     </section>`;
 }
 
 export default {
   id: ID_MODULO,
-  titulo: 'Registrar diagnóstico',
+  titulo: 'Diagnóstico',
   icono: 'diagnostico',
   roles: ['medico'],
   seccion: 'Atención médica',
+  menu: false,
   montar(contenedor, { usuario, params, navegar }) {
     const citaSolicitada = params.cita ? obtenerCitaDetallada(params.cita) : null;
     const citaValida = esCitaAtendible(citaSolicitada, usuario.id);
@@ -249,7 +252,7 @@ export default {
         [PASO_CONFIRMACION]: () => renderizarPasoConfirmacion(estado),
       };
       contenedor.innerHTML = `
-        ${renderizarEncabezado({ titulo: 'Registrar diagnóstico' })}
+        ${renderizarEncabezado({ titulo: 'Diagnóstico' })}
         ${renderizarStepper(PASOS, estado.paso)}
         ${contenidoPorPaso[estado.paso]()}`;
     }
@@ -269,9 +272,9 @@ export default {
       }
 
       const confirmado = await confirmarAccion({
-        titulo: 'Guardar diagnóstico',
+        titulo: 'Registrar diagnóstico',
         mensaje: 'La cita pasará a estado Atendida y el paciente recibirá una notificación. ¿Deseas continuar?',
-        textoConfirmar: 'Guardar diagnóstico',
+        textoConfirmar: 'Registrar diagnóstico',
       });
       if (!confirmado) return;
 
@@ -286,6 +289,15 @@ export default {
         navegar(ID_MODULO);
       }
     }
+
+    contenedor.addEventListener('click', (evento) => {
+      const boton = evento.target.closest('[data-accion]');
+      const mensajes = {
+        'enviar-diagnostico': 'Enviar diagnóstico a paciente pertenece a otro caso de uso, aún no integrado en este módulo.',
+        'registrar-receta': 'Registrar receta médica pertenece a otro caso de uso, aún no integrado en este módulo.',
+      };
+      if (boton && mensajes[boton.dataset.accion]) mostrarToast(mensajes[boton.dataset.accion], 'info');
+    });
 
     contenedor.addEventListener('submit', (evento) => {
       evento.preventDefault();

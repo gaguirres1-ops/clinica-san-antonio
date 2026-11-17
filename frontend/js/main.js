@@ -12,6 +12,10 @@ import {
 } from './core/navigation.js';
 import {
   ROLES,
+  esCitaActiva,
+  esCitaFutura,
+  listarCitas,
+  listarCitasPorAtender,
   marcarNotificacionLeida,
   marcarNotificacionesLeidas,
   notificacionesDe,
@@ -98,23 +102,50 @@ function cambiarRol(rol) {
   mostrarToast(`Ahora navegas como ${ROLES[rol].etiqueta.toLowerCase()}.`, 'info');
 }
 
+function buscarCitaParaDetalle() {
+  const usuarioId = sesion.usuarios[sesion.rol];
+  if (sesion.rol === 'paciente') {
+    return listarCitas((cita) => cita.pacienteId === usuarioId && esCitaActiva(cita) && esCitaFutura(cita))[0] ?? null;
+  }
+  if (sesion.rol === 'medico') return listarCitasPorAtender(usuarioId)[0] ?? null;
+  return null;
+}
+
+function crearEntradasDelMenu() {
+  const entradas = rutasDelMenu(sesion.rol).map((ruta) => ({
+    id: ruta.id, titulo: ruta.titulo, icono: ruta.icono, seccion: ruta.seccion, href: construirHash(ruta.id),
+  }));
+  const cita = buscarCitaParaDetalle();
+  if (cita) {
+    entradas.push({
+      id: 'detalle-cita',
+      titulo: 'Detalle de cita',
+      icono: 'documento',
+      seccion: sesion.rol === 'medico' ? 'Atención médica' : 'Citas',
+      href: construirHash('detalle-cita', { id: cita.id }),
+    });
+  }
+  return entradas;
+}
+
 function renderizarMenu() {
   const rutaActiva = leerRutaActual().id;
-  const rutas = rutasDelMenu(sesion.rol);
-  elementos.navegacionSuperior.innerHTML = rutas
-    .map((ruta) => `<a class="navegacion-superior__enlace" href="${construirHash(ruta.id)}"${ruta.id === rutaActiva ? ' aria-current="page"' : ''}>${escaparHtml(ruta.titulo)}</a>`)
+  const entradas = crearEntradasDelMenu();
+  const atributoActivo = (entrada) => (entrada.id === rutaActiva ? ' aria-current="page"' : '');
+  elementos.navegacionSuperior.innerHTML = entradas
+    .map((entrada) => `<a class="navegacion-superior__enlace" href="${entrada.href}"${atributoActivo(entrada)}>${escaparHtml(entrada.titulo)}</a>`)
     .join('');
   elementos.navegacion.innerHTML = SECCIONES_DEL_MENU
-    .map((seccion) => ({ seccion, enlaces: rutas.filter((ruta) => ruta.seccion === seccion) }))
+    .map((seccion) => ({ seccion, enlaces: entradas.filter((entrada) => entrada.seccion === seccion) }))
     .filter(({ enlaces }) => enlaces.length)
     .map(({ seccion, enlaces }) => `
       <div class="menu-seccion">
         <p class="menu-seccion__titulo">${escaparHtml(seccion)}</p>
         <ul class="menu-seccion__lista">
-          ${enlaces.map((ruta) => `
+          ${enlaces.map((entrada) => `
             <li>
-              <a class="menu-enlace" href="${construirHash(ruta.id)}"${ruta.id === rutaActiva ? ' aria-current="page"' : ''}>
-                ${icono(ruta.icono)}<span>${escaparHtml(ruta.titulo)}</span>
+              <a class="menu-enlace" href="${entrada.href}"${atributoActivo(entrada)}>
+                ${icono(entrada.icono)}<span>${escaparHtml(entrada.titulo)}</span>
               </a>
             </li>`).join('')}
         </ul>
@@ -234,6 +265,7 @@ function iniciarAplicacion() {
   registrarEventosDelShell();
   storage.suscribir(() => {
     renderizarUsuario();
+    renderizarMenu();
     renderizarNotificaciones();
   });
   alCambiarRuta(() => {
