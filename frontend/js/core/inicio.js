@@ -164,13 +164,13 @@ function renderizarInicioMedico({ usuario }) {
     ${renderizarEncabezado({ titulo: 'Citas por atender', conMigas: false })}
     <div class="rejilla-inicio">
       ${renderizarSeccionCitas({
-    titulo: 'Citas por atender',
+    titulo: 'Citas para atender hoy',
     citas: porAtender,
     mostrar: 'paciente',
-    vacio: { iconoVacio: 'check', titulo: 'Todo al día' },
+    vacio: { iconoVacio: 'check', titulo: 'No tienes citas por atender hoy' },
   })}
       ${renderizarSeccionCitas({
-    titulo: 'Próximas citas',
+    titulo: 'Próximas citas pendientes',
     citas: proximas,
     mostrar: 'paciente',
     vacio: { titulo: 'No hay pacientes programados' },

@@ -8,6 +8,7 @@ import {
   icono,
   insigniaEstado,
   renderizarAviso,
+  renderizarCodigoCie10,
   renderizarAvatarMedico,
   renderizarEncabezado,
   renderizarVacio,
@@ -57,15 +58,29 @@ function renderizarPago(pago) {
     </dl>`;
 }
 
+function renderizarTratamientos(diagnostico) {
+  if (!diagnostico.tratamientos?.length) {
+    return `
+        <div><dt>Tratamiento</dt><dd>${escaparHtml(diagnostico.tratamiento)}</dd></div>
+        <div><dt>Indicaciones</dt><dd>${escaparHtml(diagnostico.indicaciones)}</dd></div>`;
+  }
+  return `
+        <div><dt>Tratamiento</dt><dd>
+          <ul class="lista-tratamientos">
+            <li class="lista-tratamientos__cabecera"><span>Tratamiento</span><span>Indicaciones</span></li>
+            ${diagnostico.tratamientos.map((fila) => `<li><b>${escaparHtml(fila.tratamiento)}</b><span>${escaparHtml(fila.indicaciones || '—')}</span></li>`).join('')}
+          </ul>
+        </dd></div>`;
+}
+
 function renderizarDiagnostico(diagnostico) {
   if (!diagnostico) return '';
   return `
     <section class="panel">
       <header class="panel__cabecera"><h2 class="panel__titulo">Diagnóstico registrado</h2></header>
       <dl class="lista-datos lista-datos--apilada">
-        <div><dt>Diagnóstico</dt><dd>${escaparHtml(diagnostico.diagnostico)} <span class="codigo">${escaparHtml(diagnostico.codigoCie10)}</span></dd></div>
-        <div><dt>Tratamiento</dt><dd>${escaparHtml(diagnostico.tratamiento)}</dd></div>
-        <div><dt>Indicaciones</dt><dd>${escaparHtml(diagnostico.indicaciones)}</dd></div>
+        <div><dt>Diagnóstico</dt><dd>${escaparHtml(diagnostico.diagnostico)} ${renderizarCodigoCie10(diagnostico.codigoCie10)}</dd></div>
+        ${renderizarTratamientos(diagnostico)}
         <div><dt>Observaciones</dt><dd>${escaparHtml(diagnostico.observaciones)}</dd></div>
       </dl>
     </section>`;
@@ -135,7 +150,7 @@ function renderizarInformacionDelPaciente(cita) {
           ${historial.map((registro) => `
             <li>
               <time datetime="${escaparHtml(registro.fecha)}">${escaparHtml(formatearFecha(registro.fecha))}</time>
-              <strong>${escaparHtml(registro.diagnostico)} <span class="codigo">${escaparHtml(registro.codigoCie10)}</span></strong>
+              <strong>${escaparHtml(registro.diagnostico)} ${renderizarCodigoCie10(registro.codigoCie10)}</strong>
             </li>`).join('')}
         </ul>` : '<p class="diagnostico__sin-historial">Sin diagnósticos previos registrados.</p>'}
     </section>`;

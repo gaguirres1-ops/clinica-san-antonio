@@ -93,6 +93,10 @@ export function renderizarAvatarMedico(medico, modificador = '') {
   return `<span class="avatar-medico${modificador ? ` avatar-medico--${modificador}` : ''}" aria-hidden="true">${dibujarAvatarMedico(medico?.id)}</span>`;
 }
 
+export function renderizarCodigoCie10(codigo) {
+  return codigo ? `<span class="codigo">${escaparHtml(codigo)}</span>` : '';
+}
+
 export function insigniaEstado(estado) {
   return `<span class="insignia insignia--${VARIANTES_POR_ESTADO[estado] ?? 'neutro'}">${escaparHtml(estado)}</span>`;
 }

@@ -2763,3 +2763,146 @@ button.celda-agenda:hover:not(:disabled) {
     align-items: stretch;
   }
 }
+
+.autocompletar {
+  position: relative;
+}
+
+.autocompletar__lista {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  left: 0;
+  z-index: 20;
+  max-height: 320px;
+  overflow-y: auto;
+  padding: 6px;
+  border: 1px solid var(--color-borde);
+  border-radius: var(--radio);
+  background: #fff;
+  box-shadow: var(--sombra-md);
+}
+
+.autocompletar__opcion {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: var(--radio-sm);
+  color: var(--color-titulo);
+  font-size: .9rem;
+  cursor: pointer;
+}
+
+.autocompletar__opcion:hover,
+.autocompletar__opcion--activa {
+  background: var(--color-azul-suave);
+}
+
+.autocompletar__opcion .codigo {
+  flex: none;
+  min-width: 54px;
+  text-align: center;
+}
+
+.tratamientos {
+  display: grid;
+  gap: 10px;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.tratamientos legend {
+  margin-bottom: 10px;
+  padding: 0;
+}
+
+.tratamientos__cabecera,
+.tratamientos__fila {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) 44px;
+  gap: 10px;
+  align-items: center;
+}
+
+.tratamientos__cabecera {
+  color: var(--color-texto-suave);
+  font-size: .74rem;
+  font-weight: 600;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+}
+
+.tratamientos__cabecera span:last-child {
+  grid-column: 2 / 4;
+}
+
+.tratamientos > .boton {
+  justify-self: start;
+}
+
+.tratamientos__quitar {
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+}
+
+.resumen-registro__lista {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.resumen-registro__lista b {
+  color: var(--color-titulo);
+}
+
+.lista-tratamientos {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.lista-tratamientos li {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 12px;
+  padding: 8px 12px;
+  border-radius: var(--radio-sm);
+  background: var(--color-fondo);
+  font-size: .88rem;
+}
+
+.lista-tratamientos__cabecera {
+  background: none !important;
+  color: var(--color-texto-suave);
+  font-size: .72rem !important;
+  font-weight: 600;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+}
+
+@media (max-width: 640px) {
+  .tratamientos__cabecera {
+    display: none;
+  }
+
+  .tratamientos__fila {
+    grid-template-columns: minmax(0, 1fr) 44px;
+  }
+
+  .tratamientos__fila [data-campo-indicaciones] {
+    grid-column: 1;
+  }
+
+  .tratamientos__quitar {
+    grid-column: 2;
+    grid-row: 1 / span 2;
+  }
+}
