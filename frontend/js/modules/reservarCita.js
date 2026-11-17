@@ -45,16 +45,39 @@ import {
   renderizarVacio,
 } from '../core/ui.js';
 
-const PASOS = ['Médico', 'Fecha y horario', 'Confirmación'];
-const TITULOS_DE_PASO = ['Selecciona un médico', 'Selecciona fecha y horario', 'Revisa y confirma tu cita'];
+const PASOS = ['Médico', 'Fecha y horario', 'Pago', 'Confirmación'];
+const TITULOS_DE_PASO = ['Selecciona un médico', 'Selecciona fecha y horario', 'Realiza el pago'];
 const SUBTITULOS_DE_PASO = [
   'Busca por nombre o filtra por especialidad y elige con quién deseas atenderte.',
   'Elige un día con horarios libres y luego el horario de tu preferencia.',
-  'Verifica los datos antes de confirmar. La cita quedará pendiente de pago.',
+  'Elige un método de pago. Si prefieres, puedes pagar después, dentro del plazo.',
 ];
 const PASO_MEDICO = 0;
 const PASO_FECHA_Y_HORARIO = 1;
-const PASO_EXITO = PASOS.length;
+const PASO_PAGO = 2;
+const PASO_EXITO = 3;
+const METODOS_DE_PAGO = [
+  { id: 'tarjeta', etiqueta: 'Tarjeta de crédito / débito', marcas: ['VISA', 'MC'] },
+  { id: 'yape', etiqueta: 'Yape', marcas: [] },
+  { id: 'plin', etiqueta: 'Plin', marcas: [] },
+];
+const CAMPOS_POR_METODO = {
+  tarjeta: [
+    { campo: 'numero', etiqueta: 'Número de tarjeta', placeholder: '0000 0000 0000 0000', longitud: 23, completo: true },
+    { campo: 'titular', etiqueta: 'Nombre del titular', placeholder: 'Como aparece en la tarjeta', teclado: 'text', longitud: 60, completo: true },
+    { campo: 'vencimiento', etiqueta: 'Vencimiento', placeholder: 'MM/AA', longitud: 5 },
+    { campo: 'cvv', etiqueta: 'CVV', placeholder: '123', longitud: 4 },
+  ],
+  yape: [
+    { campo: 'celular', etiqueta: 'Celular Yape', placeholder: '9XX XXX XXX', longitud: 11 },
+    { campo: 'codigo', etiqueta: 'Código de aprobación', placeholder: '6 dígitos', longitud: 6 },
+  ],
+  plin: [
+    { campo: 'celular', etiqueta: 'Celular Plin', placeholder: '9XX XXX XXX', longitud: 11 },
+    { campo: 'codigo', etiqueta: 'Código de aprobación', placeholder: '6 dígitos', longitud: 6 },
+  ],
+};
+const TERMINACION_DE_TARJETA_RECHAZADA = '0002';
 const DIAS_DE_LA_SEMANA = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'];
 const LIMITE_MOTIVO = 250;
 const MINUTOS_MINIMOS_PARA_PAGAR = 30;
@@ -75,6 +98,9 @@ function crearEstadoInicial() {
     procesando: false,
     error: '',
     citaCreadaId: null,
+    metodoPago: 'tarjeta',
+    pago: {},
+    erroresPago: {},
   };
 }
 
@@ -96,7 +122,11 @@ function calcularFechaLimitePago(fecha, hora) {
   return new Date(limite).toISOString();
 }
 
-function registrarReserva({ pacienteId, horarioId, motivo }) {
+function generarTransaccion() {
+  return `TX-${Math.random().toString(16).slice(2, 10).toUpperCase()}`;
+}
+
+function registrarReserva({ pacienteId, horarioId, motivo, metodoPago = null }) {
   return storage.ejecutarTransaccion(() => {
     const horario = storage.obtenerPorId('horarios', horarioId);
     if (!esHorarioReservable(horario)) {
@@ -116,6 +146,8 @@ function registrarReserva({ pacienteId, horarioId, motivo }) {
     }
 
     const registradaEn = ahoraISO();
+    const pagado = Boolean(metodoPago);
+    const etiquetaMetodo = METODOS_DE_PAGO.find((metodo) => metodo.id === metodoPago)?.etiqueta ?? null;
     const fechaLimite = calcularFechaLimitePago(horario.fecha, horario.hora);
     const cita = storage.insertar('citas', {
       pacienteId,
@@ -126,9 +158,12 @@ function registrarReserva({ pacienteId, horarioId, motivo }) {
       hora: horario.hora,
       consultorio: medico.consultorio,
       motivo: motivo.trim(),
-      estado: ESTADOS_CITA.PENDIENTE_PAGO,
+      estado: pagado ? ESTADOS_CITA.CONFIRMADA : ESTADOS_CITA.PENDIENTE_PAGO,
       creadaEn: registradaEn,
-      eventos: [{ fecha: registradaEn, descripcion: 'Cita registrada desde el portal del paciente. Estado: Pendiente de pago.', actor: paciente.nombre }],
+      eventos: [
+        { fecha: registradaEn, descripcion: 'Cita registrada desde el portal del paciente.', actor: paciente.nombre },
+        ...(pagado ? [{ fecha: registradaEn, descripcion: `Pago confirmado con ${etiquetaMetodo}. Estado: Confirmada.`, actor: 'Caja virtual' }] : []),
+      ],
     });
 
     ocuparHorario(horario.id, cita.id);
@@ -138,10 +173,11 @@ function registrarReserva({ pacienteId, horarioId, motivo }) {
       pacienteId,
       monto: medico.tarifa,
       moneda: 'PEN',
-      metodo: null,
-      estado: ESTADOS_PAGO.PENDIENTE,
+      metodo: etiquetaMetodo,
+      estado: pagado ? ESTADOS_PAGO.PAGADO : ESTADOS_PAGO.PENDIENTE,
       fechaLimite,
-      fechaPago: null,
+      fechaPago: pagado ? registradaEn : null,
+      transaccion: pagado ? generarTransaccion() : null,
     });
 
     const cuando = `${formatearFechaLarga(horario.fecha)} a las ${horario.hora}`;
@@ -149,8 +185,10 @@ function registrarReserva({ pacienteId, horarioId, motivo }) {
       destinatarioRol: 'paciente',
       destinatarioId: pacienteId,
       citaId: cita.id,
-      titulo: 'Cita registrada · Pendiente de pago',
-      mensaje: `Tu cita con ${medico.nombre} el ${cuando} fue registrada. Realiza el pago antes del ${formatearMomento(fechaLimite)}.`,
+      titulo: pagado ? 'Cita confirmada' : 'Cita registrada · Pendiente de pago',
+      mensaje: pagado
+        ? `Tu pago fue aprobado y tu cita con ${medico.nombre} el ${cuando} quedó confirmada.`
+        : `Tu cita con ${medico.nombre} el ${cuando} fue registrada. Realiza el pago antes del ${formatearMomento(fechaLimite)}.`,
     });
     notificar({
       destinatarioRol: 'medico',
@@ -162,7 +200,7 @@ function registrarReserva({ pacienteId, horarioId, motivo }) {
     notificar({
       destinatarioRol: 'administrador',
       citaId: cita.id,
-      titulo: 'Nueva reserva pendiente de pago',
+      titulo: pagado ? 'Nueva reserva confirmada' : 'Nueva reserva pendiente de pago',
       mensaje: `${cita.id} · ${paciente.nombre} con ${medico.nombre} (${medico.especialidad?.nombre ?? ''}).`,
     });
 
@@ -332,24 +370,70 @@ function renderizarPasoFechaYHorario(estado, medico) {
     </div>`;
 }
 
-function renderizarPasoConfirmacion(estado, medico, paciente) {
-  const horario = storage.obtenerPorId('horarios', estado.horarioId);
+function renderizarCampoPago(definicion, estado) {
+  const { campo, etiqueta, placeholder, longitud, teclado = 'numeric', completo = false } = definicion;
+  const error = estado.erroresPago[campo];
   return `
-    <dl class="lista-datos lista-datos--resumen">
-      <div><dt>Paciente</dt><dd>${escaparHtml(paciente.nombre)} <small>DNI ${escaparHtml(paciente.dni)}</small></dd></div>
-      <div><dt>Médico</dt><dd>${escaparHtml(medico.nombre)} <small>CMP ${escaparHtml(medico.cmp)}</small></dd></div>
-      <div><dt>Especialidad</dt><dd>${escaparHtml(medico.especialidad?.nombre ?? '')}</dd></div>
-      <div><dt>Fecha</dt><dd>${escaparHtml(formatearFechaLarga(horario.fecha))}</dd></div>
-      <div><dt>Hora</dt><dd>${escaparHtml(horario.hora)} · ${horario.duracionMinutos} minutos</dd></div>
-      <div><dt>Lugar</dt><dd>${escaparHtml(medico.consultorio)}</dd></div>
-      <div><dt>Motivo</dt><dd>${escaparHtml(estado.motivo.trim() || 'No especificado')}</dd></div>
-      <div><dt>Estado inicial</dt><dd>${insigniaEstado(ESTADOS_CITA.PENDIENTE_PAGO)}</dd></div>
-    </dl>
+    <div class="campo${completo ? ' campo--completo' : ''}">
+      <label class="campo__etiqueta" for="pago-${campo}">${escaparHtml(etiqueta)}</label>
+      <input class="entrada" id="pago-${campo}" data-campo="pago-${campo}" inputmode="${teclado}" maxlength="${longitud}"
+        placeholder="${escaparHtml(placeholder)}" value="${escaparHtml(estado.pago[campo] ?? '')}" autocomplete="off"${error ? ' aria-invalid="true"' : ''}>
+      ${error ? `<p class="campo__error" role="alert">${escaparHtml(error)}</p>` : ''}
+    </div>`;
+}
+
+function renderizarPasoPago(estado) {
+  return `
+    <div class="metodos-pago" role="radiogroup" aria-label="Método de pago">
+      ${METODOS_DE_PAGO.map((metodo) => `
+        <label class="metodo-pago${metodo.id === estado.metodoPago ? ' metodo-pago--activo' : ''}">
+          <input type="radio" name="metodoPago" value="${metodo.id}" data-campo="metodoPago"${metodo.id === estado.metodoPago ? ' checked' : ''}>
+          <span class="metodo-pago__radio"></span>
+          <span class="metodo-pago__etiqueta">${escaparHtml(metodo.etiqueta)}</span>
+          ${metodo.marcas.map((marca) => `<span class="metodo-pago__marca">${marca}</span>`).join('')}
+        </label>`).join('')}
+    </div>
+    <div class="pago-formulario">
+      ${CAMPOS_POR_METODO[estado.metodoPago].map((definicion) => renderizarCampoPago(definicion, estado)).join('')}
+    </div>
+    <p class="pago-seguro">${icono('candado')}Pago protegido. Solo guardamos el identificador de la transacción.</p>
     ${renderizarAviso({
-      tipo: 'alerta',
-      titulo: `Tendrás hasta ${HORAS_LIMITE_PAGO} horas para pagar`,
-      mensaje: 'Al confirmar, el horario quedará bloqueado a tu nombre. Si el pago no se realiza dentro del plazo, la reserva podrá ser liberada.',
-    })}`;
+    tipo: 'info',
+    titulo: `Si pagas después tendrás hasta ${HORAS_LIMITE_PAGO} horas`,
+    mensaje: 'La cita quedará pendiente de pago y el horario bloqueado a tu nombre hasta el plazo.',
+  })}`;
+}
+
+function validarPago({ metodoPago, pago }) {
+  const errores = {};
+  if (metodoPago === 'tarjeta') {
+    const numero = (pago.numero ?? '').replace(/\s/g, '');
+    if (!/^\d{13,19}$/.test(numero)) errores.numero = 'Ingresa de 13 a 19 dígitos.';
+    if ((pago.titular ?? '').trim().length < 3) errores.titular = 'Ingresa el nombre del titular.';
+    const vencimiento = /^(\d{2})\/(\d{2})$/.exec(pago.vencimiento ?? '');
+    const ahora = new Date();
+    const mes = Number(vencimiento?.[1]);
+    const anio = 2000 + Number(vencimiento?.[2]);
+    const vigente = vencimiento && mes >= 1 && mes <= 12 && (anio > ahora.getFullYear() || (anio === ahora.getFullYear() && mes >= ahora.getMonth() + 1));
+    if (!vigente) errores.vencimiento = 'Usa una fecha vigente.';
+    if (!/^\d{3,4}$/.test(pago.cvv ?? '')) errores.cvv = '3 o 4 dígitos.';
+  } else {
+    if (!/^9\d{8}$/.test((pago.celular ?? '').replace(/\s/g, ''))) errores.celular = '9 dígitos, empieza con 9.';
+    if (!/^\d{6}$/.test(pago.codigo ?? '')) errores.codigo = 'Ingresa 6 dígitos.';
+  }
+  return errores;
+}
+
+function aplicarMascara(campo, valor) {
+  const digitos = valor.replace(/\D/g, '');
+  const mascaras = {
+    'pago-numero': () => digitos.slice(0, 19).replace(/(.{4})/g, '$1 ').trim(),
+    'pago-vencimiento': () => (digitos.length > 2 ? `${digitos.slice(0, 2)}/${digitos.slice(2, 4)}` : digitos),
+    'pago-celular': () => digitos.slice(0, 9).replace(/(\d{3})(?=\d)/g, '$1 ').trim(),
+    'pago-cvv': () => digitos.slice(0, 4),
+    'pago-codigo': () => digitos.slice(0, 6),
+  };
+  return mascaras[campo] ? mascaras[campo]() : valor;
 }
 
 function renderizarError(estado) {
@@ -362,15 +446,24 @@ function puedeAvanzar(estado) {
   return false;
 }
 
-function renderizarAcciones(estado) {
-  const botonVolver = estado.paso > 0
+function renderizarAcciones(estado, medico) {
+  const botonVolver = estado.paso > PASO_MEDICO
     ? `<button class="boton boton--secundario" type="button" data-accion="volver" ${estado.procesando ? 'disabled' : ''}>${icono('flechaIzquierda')}Atrás</button>`
     : '<span></span>';
-  const botonAvanzar = estado.paso === PASOS.length - 1
-    ? `<button class="boton boton--primario" type="button" data-accion="confirmar-reserva" ${estado.procesando ? 'disabled' : ''}>
-        ${estado.procesando ? '<span class="giro" aria-hidden="true"></span>Registrando…' : `${icono('check')}Confirmar reserva`}
-      </button>`
-    : `<button class="boton boton--primario" type="button" data-accion="continuar" ${puedeAvanzar(estado) ? '' : 'disabled'}>Continuar${icono('flechaDerecha')}</button>`;
+  if (estado.paso === PASO_PAGO) {
+    const deshabilitado = estado.procesando ? 'disabled' : '';
+    return `
+      <div class="acciones-paso">
+        ${botonVolver}
+        <div class="acciones-paso__derecha">
+          <button class="boton boton--fantasma" type="button" data-accion="pagar-despues" ${deshabilitado}>Pagar después</button>
+          <button class="boton boton--primario" type="button" data-accion="pagar-ahora" ${deshabilitado}>
+            ${estado.procesando ? '<span class="giro" aria-hidden="true"></span>Procesando…' : `${icono('candado')}Pagar ${formatearMoneda(medico.tarifa)}`}
+          </button>
+        </div>
+      </div>`;
+  }
+  const botonAvanzar = `<button class="boton boton--primario" type="button" data-accion="continuar" ${puedeAvanzar(estado) ? '' : 'disabled'}>Continuar${icono('flechaDerecha')}</button>`;
   return `<div class="acciones-paso">${botonVolver}${botonAvanzar}</div>`;
 }
 
@@ -402,21 +495,23 @@ function renderizarExito(estado) {
   const cita = storage.obtenerPorId('citas', estado.citaCreadaId);
   const medico = obtenerMedico(cita.medicoId);
   const pago = storage.buscar('pagos', (registro) => registro.citaId === cita.id);
+  const pagada = pago?.estado === ESTADOS_PAGO.PAGADO;
   return `
+    ${renderizarStepper(PASOS, PASOS.length)}
     <section class="panel exito-reserva">
       <span class="exito-reserva__anillo"><span>${icono('check')}</span></span>
       <h2 class="exito-reserva__titulo" data-titulo-paso tabindex="-1">¡Cita registrada con éxito!</h2>
-      <p class="exito-reserva__texto">Enviamos la confirmación a tus notificaciones. El horario quedó bloqueado a tu nombre.</p>
+      <p class="exito-reserva__texto">${pagada ? 'Tu pago fue aprobado y tu cita está confirmada.' : 'Tu cita quedó reservada. Completa el pago dentro del plazo para confirmarla.'}</p>
       <div class="ticket">
         <header class="ticket__cabecera"><span>Código de cita</span><b>${escaparHtml(cita.id)}</b></header>
         <div class="ticket__fila">${icono('estetoscopio')}<span>Médico</span><b>${escaparHtml(medico.nombre)}</b></div>
         <div class="ticket__fila">${icono('calendario')}<span>Fecha</span><b>${escaparHtml(formatearFechaLarga(cita.fecha))}</b></div>
         <div class="ticket__fila">${icono('reloj')}<span>Hora</span><b>${escaparHtml(cita.hora)}</b></div>
         <div class="ticket__fila">${icono('ubicacion')}<span>Lugar</span><b>${escaparHtml(cita.consultorio)}</b></div>
-        <div class="ticket__fila">${icono('dinero')}<span>Monto</span><b>${formatearMoneda(pago?.monto)}</b></div>
+        <div class="ticket__fila">${icono('dinero')}<span>${pagada ? 'Pagado' : 'Monto'}</span><b>${formatearMoneda(pago?.monto)}${pagada && pago.transaccion ? ` · <span class="codigo">${escaparHtml(pago.transaccion)}</span>` : ''}</b></div>
         <div class="ticket__fila">${icono('info')}<span>Estado</span><b>${insigniaEstado(cita.estado)}</b></div>
       </div>
-      ${pago ? renderizarAviso({ tipo: 'alerta', titulo: 'Pago pendiente', mensaje: `Realiza el pago antes del ${formatearMomento(pago.fechaLimite)} para confirmar tu cita.` }) : ''}
+      ${pagada ? '' : renderizarAviso({ tipo: 'alerta', titulo: 'Pago pendiente', mensaje: `Realiza el pago antes del ${formatearMomento(pago.fechaLimite)} para confirmar tu cita.` })}
       <div class="exito-reserva__acciones">
         <a class="boton boton--primario" href="${construirHash('detalle-cita', { id: cita.id })}">${icono('documento')}Ver detalle de la cita</a>
         <button class="boton boton--secundario" type="button" data-accion="nueva-reserva">${icono('calendarioMas')}Reservar otra cita</button>
@@ -424,12 +519,12 @@ function renderizarExito(estado) {
     </section>`;
 }
 
-function renderizarAsistente(estado, paciente) {
+function renderizarAsistente(estado) {
   const medico = estado.medicoId ? obtenerMedico(estado.medicoId) : null;
   const contenidoPorPaso = [
     () => renderizarPasoMedico(estado),
     () => renderizarPasoFechaYHorario(estado, medico),
-    () => renderizarPasoConfirmacion(estado, medico, paciente),
+    () => renderizarPasoPago(estado),
   ];
   return `
     ${renderizarStepper(PASOS, estado.paso)}
@@ -442,7 +537,7 @@ function renderizarAsistente(estado, paciente) {
         </header>
         ${renderizarError(estado)}
         ${contenidoPorPaso[estado.paso]()}
-        ${renderizarAcciones(estado)}
+        ${renderizarAcciones(estado, medico)}
       </section>
       ${renderizarResumen(estado, medico)}
     </div>`;
@@ -473,9 +568,9 @@ export default {
     aplicarParametrosIniciales(estado, params);
 
     function renderizar({ enfocarTitulo = false } = {}) {
-      const contenido = estado.paso === PASO_EXITO ? renderizarExito(estado) : renderizarAsistente(estado, paciente);
+      const contenido = estado.paso === PASO_EXITO ? renderizarExito(estado) : renderizarAsistente(estado);
       contenedor.innerHTML = `
-        ${renderizarEncabezado({ titulo: 'Reservar cita', descripcion: 'Agenda tu atención en tres pasos con el especialista de tu preferencia.' })}
+        ${renderizarEncabezado({ titulo: 'Reservar cita', descripcion: 'Agenda tu atención en cuatro pasos con el especialista de tu preferencia.' })}
         ${contenido}`;
       if (enfocarTitulo) contenedor.querySelector('[data-titulo-paso]')?.focus();
     }
@@ -513,8 +608,21 @@ export default {
       renderizar();
     }
 
-    function confirmarReserva() {
+    function confirmarReserva({ pagarAhora }) {
       if (estado.procesando) return;
+      if (pagarAhora) {
+        estado.erroresPago = validarPago(estado);
+        const [primerCampo] = Object.keys(estado.erroresPago);
+        const numero = (estado.pago.numero ?? '').replace(/\s/g, '');
+        estado.error = !primerCampo && estado.metodoPago === 'tarjeta' && numero.endsWith(TERMINACION_DE_TARJETA_RECHAZADA)
+          ? 'El pago fue rechazado por el emisor. Prueba con otro medio de pago.'
+          : '';
+        if (primerCampo || estado.error) {
+          renderizar();
+          contenedor.querySelector(`#pago-${primerCampo}`)?.focus();
+          return;
+        }
+      }
       estado.procesando = true;
       estado.error = '';
       renderizar();
@@ -522,10 +630,15 @@ export default {
       setTimeout(() => {
         if (!montado) return;
         try {
-          const cita = registrarReserva({ pacienteId: paciente.id, horarioId: estado.horarioId, motivo: estado.motivo });
+          const cita = registrarReserva({
+            pacienteId: paciente.id,
+            horarioId: estado.horarioId,
+            motivo: estado.motivo,
+            metodoPago: pagarAhora ? estado.metodoPago : null,
+          });
           Object.assign(estado, { procesando: false, citaCreadaId: cita.id, paso: PASO_EXITO });
           renderizar({ enfocarTitulo: true });
-          mostrarToast(`Cita ${cita.id} registrada. Pendiente de pago.`);
+          mostrarToast(pagarAhora ? `Pago aprobado. Cita ${cita.id} confirmada.` : `Cita ${cita.id} registrada. Pendiente de pago.`);
         } catch (error) {
           const esReglaDeNegocio = error instanceof ErrorDeDominio;
           if (!esReglaDeNegocio) console.error(error);
@@ -562,7 +675,8 @@ export default {
         if (puedeAvanzar(estado)) irAPaso(estado.paso + 1);
       },
       volver: () => irAPaso(Math.max(0, estado.paso - 1)),
-      'confirmar-reserva': confirmarReserva,
+      'pagar-ahora': () => confirmarReserva({ pagarAhora: true }),
+      'pagar-despues': () => confirmarReserva({ pagarAhora: false }),
       'nueva-reserva': () => {
         Object.assign(estado, crearEstadoInicial());
         renderizar({ enfocarTitulo: true });
@@ -575,11 +689,23 @@ export default {
       acciones[boton.dataset.accion]?.(boton);
     });
 
+    contenedor.addEventListener('change', (evento) => {
+      if (evento.target.dataset.campo !== 'metodoPago') return;
+      Object.assign(estado, { metodoPago: evento.target.value, pago: {}, erroresPago: {}, error: '' });
+      renderizar();
+      contenedor.querySelector('.pago-formulario .entrada')?.focus();
+    });
+
     contenedor.addEventListener('input', (evento) => {
       const campo = evento.target.dataset.campo;
       if (campo === 'busqueda') {
         estado.busqueda = evento.target.value;
         contenedor.querySelector('[data-region="lista-medicos"]').innerHTML = renderizarListaMedicos(estado);
+      }
+      if (campo?.startsWith('pago-')) {
+        const valor = aplicarMascara(campo, evento.target.value);
+        evento.target.value = valor;
+        estado.pago[campo.replace('pago-', '')] = valor;
       }
       if (campo === 'motivo') {
         estado.motivo = evento.target.value;
@@ -597,7 +723,7 @@ export default {
       const horarioElegido = estado.horarioId ? storage.obtenerPorId('horarios', estado.horarioId) : null;
       if (estado.horarioId && !esHorarioReservable(horarioElegido)) {
         estado.horarioId = null;
-        if (estado.paso === PASOS.length - 1) estado.paso = PASO_FECHA_Y_HORARIO;
+        if (estado.paso === PASO_PAGO) estado.paso = PASO_FECHA_Y_HORARIO;
         estado.error = 'El horario que habías elegido acaba de ser reservado desde otra sesión. Selecciona otro.';
         mostrarToast('Un horario de tu selección se ocupó.', 'info');
       }
