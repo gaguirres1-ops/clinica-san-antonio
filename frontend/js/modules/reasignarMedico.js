@@ -29,7 +29,7 @@ import {
 } from '../core/ui.js';
 
 const ID_MODULO = 'reasignar-medico';
-const PASOS = ['Seleccionar cita', 'Nuevo médico', 'Confirmación'];
+const PASOS = ['Seleccionar cita', 'Buscar médico', 'Reasignación'];
 const PASO_SELECCION = 0;
 const PASO_MEDICO = 1;
 const PASO_CONFIRMACION = 2;
@@ -121,6 +121,7 @@ function renderizarTarjetaMedico(medico, seleccionado) {
         <span class="tarjeta-medico__especialidad">${escaparHtml(medico.especialidad?.nombre ?? '')}</span>
         <span class="tarjeta-medico__nombre">${escaparHtml(medico.nombre)}</span>
         <span class="tarjeta-medico__dato">${escaparHtml(medico.consultorio)}</span>
+        <span class="tarjeta-medico__disponibilidad">${icono('check')}Disponible en este horario</span>
       </span>
       ${seleccionado ? `<span class="tarjeta-medico__marca">${icono('check')}</span>` : ''}
     </button>`;
@@ -133,11 +134,12 @@ function renderizarPasoMedico(estado) {
     <div class="reasignacion">
       <section class="panel">
         <h2 class="panel__titulo">Médicos disponibles en este horario</h2>
+        <p class="reasignacion__ayuda">Se muestran solo los médicos de la misma especialidad con este horario libre. La disponibilidad se valida otra vez al reasignar.</p>
         ${compatibles.length
     ? `<div class="rejilla-medicos">${compatibles.map((medico) => renderizarTarjetaMedico(medico, medico.id === estado.medicoDestinoId)).join('')}</div>`
     : renderizarVacio({ iconoVacio: 'estetoscopio', titulo: 'No hay médicos disponibles', mensaje: `Ningún médico de ${cita.medico.especialidad?.nombre ?? 'la misma especialidad'} tiene libre este horario.` })}
         <div class="acciones-paso">
-          <a class="boton boton--secundario" href="${construirHash(ID_MODULO)}">${icono('flechaIzquierda')}Cambiar cita</a>
+          <a class="boton boton--secundario" href="${construirHash('citas-existentes')}">${icono('flechaIzquierda')}Volver a citas existentes</a>
           <button class="boton boton--primario" type="button" data-accion="reasignar"${estado.medicoDestinoId ? '' : ' disabled'}>${icono('reasignar')}Reasignar médico</button>
         </div>
       </section>
@@ -187,6 +189,7 @@ export default {
   icono: 'reasignar',
   roles: ['administrador'],
   seccion: 'Gestión',
+  menu: false,
   montar(contenedor, { usuario, params }) {
     const citaSolicitada = params.cita ? obtenerCitaDetallada(params.cita) : null;
     const citaValida = esCitaReasignable(citaSolicitada);

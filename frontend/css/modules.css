@@ -2906,3 +2906,106 @@ button.celda-agenda:hover:not(:disabled) {
     grid-row: 1 / span 2;
   }
 }
+
+.citas-existentes {
+  display: grid;
+  gap: 20px;
+}
+
+.medico-citas {
+  padding: 0;
+  overflow: hidden;
+}
+
+.medico-citas__cabecera {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 16px;
+  padding: 20px 24px;
+  border-bottom: 1px solid var(--color-borde);
+  background: var(--color-fondo);
+}
+
+.medico-citas__datos {
+  flex: 1;
+  min-width: 200px;
+}
+
+.medico-citas__datos p {
+  color: var(--color-texto-suave);
+  font-size: .86rem;
+}
+
+.medico-citas__lista {
+  display: grid;
+}
+
+.medico-citas__vacio {
+  padding: 22px 24px;
+  color: var(--color-texto-suave);
+  font-size: .9rem;
+}
+
+.cita-pendiente {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 16px;
+  padding: 16px 24px;
+  border-bottom: 1px solid var(--color-borde);
+}
+
+.cita-pendiente:last-child {
+  border-bottom: 0;
+}
+
+.cita-pendiente__fecha {
+  display: grid;
+  place-items: center;
+  width: 52px;
+  padding: 6px 0;
+  border-radius: 12px;
+  background: var(--color-azul-suave);
+  color: var(--color-azul);
+  line-height: 1.1;
+}
+
+.cita-pendiente__fecha b {
+  font-family: var(--fuente-titulos);
+  font-size: 1.1rem;
+}
+
+.cita-pendiente__fecha small {
+  font-size: .68rem;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.cita-pendiente__info {
+  display: grid;
+  flex: 1;
+  min-width: 200px;
+}
+
+.cita-pendiente__info strong {
+  color: var(--color-titulo);
+  font-size: .95rem;
+}
+
+.cita-pendiente__info small {
+  color: var(--color-texto-suave);
+  font-size: .8rem;
+}
+
+.cita-pendiente__acciones {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.reasignacion__ayuda {
+  margin: 6px 0 16px;
+  color: var(--color-texto-suave);
+  font-size: .86rem;
+}

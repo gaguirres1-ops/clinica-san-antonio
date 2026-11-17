@@ -30,6 +30,7 @@ import reprogramarCita from './modules/reprogramarCita.js';
 import cancelarCita from './modules/cancelarCita.js';
 import diagnostico from './modules/diagnostico.js';
 import gestionarAgenda from './modules/gestionarAgenda.js';
+import citasExistentes from './modules/citasExistentes.js';
 import reasignarMedico from './modules/reasignarMedico.js';
 
 const SECCIONES_DEL_MENU = ['General', 'Citas', 'Atención médica', 'Gestión'];
@@ -261,7 +262,7 @@ function registrarEventosDelShell() {
 }
 
 function iniciarAplicacion() {
-  registrarRutas([inicio, reservarCita, reprogramarCita, cancelarCita, diagnostico, gestionarAgenda, reasignarMedico, detalleCita]);
+  registrarRutas([inicio, reservarCita, reprogramarCita, cancelarCita, diagnostico, gestionarAgenda, citasExistentes, reasignarMedico, detalleCita]);
   registrarEventosDelShell();
   storage.suscribir(() => {
     renderizarUsuario();
