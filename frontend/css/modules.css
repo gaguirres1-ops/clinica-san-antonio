@@ -3009,3 +3009,48 @@ button.celda-agenda:hover:not(:disabled) {
   color: var(--color-texto-suave);
   font-size: .86rem;
 }
+
+.confirmacion-final {
+  display: grid;
+  gap: 16px;
+  justify-items: center;
+  text-align: center;
+}
+
+.confirmacion-final .ticket {
+  width: 100%;
+  text-align: left;
+}
+
+.confirmacion-final .aviso {
+  width: 100%;
+  text-align: left;
+}
+
+.confirmacion-final__nota {
+  color: var(--color-texto-suave);
+  font-size: .86rem;
+}
+
+.modal__cuerpo .lista-datos {
+  margin-top: 16px;
+}
+
+.modal__cuerpo .aviso {
+  margin-top: 14px;
+}
+
+.mis-citas__ver {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--color-azul-claro);
+  font-size: .82rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.mis-citas__ver .icono {
+  width: 16px;
+  height: 16px;
+}

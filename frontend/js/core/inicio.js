@@ -140,6 +140,7 @@ function renderizarMisCitas(citas) {
               </span>
               <span class="mis-citas__fecha">${icono('calendario')}${escaparHtml(formatearFecha(cita.fecha))} · ${escaparHtml(cita.hora)}</span>
               ${insigniaEstado(cita.estado)}
+              <span class="mis-citas__ver">Ver detalle${icono('chevronDerecha')}</span>
             </a>
           </li>`).join('')}
       </ul>

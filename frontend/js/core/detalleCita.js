@@ -1,12 +1,19 @@
 import * as storage from './storage.js';
-import { ESTADOS_CITA, esCitaActiva, esCitaFutura, obtenerCitaDetallada, puedeCancelarCita, puedeRegistrarDiagnostico, puedeReprogramarCita, puedeVerCita } from './dominio.js';
+import { ESTADOS_CITA, ESTADOS_PAGO, esCitaActiva, esCitaFutura, obtenerCitaDetallada, puedeCancelarCita, puedeRegistrarDiagnostico, puedeReprogramarCita, puedeVerCita } from './dominio.js';
 import { desdeISO, formatearFecha, formatearFechaLarga, formatearMomento } from './fechas.js';
 import { construirHash, puedeAcceder } from './navigation.js';
+import {
+  c_registrarCancelacion,
+  c_validarCancelacion,
+  c_verificarReembolso,
+} from './controlesCita.js';
 import {
   escaparHtml,
   formatearMoneda,
   icono,
+  confirmarAccion,
   insigniaEstado,
+  mostrarToast,
   renderizarAviso,
   renderizarCodigoCie10,
   renderizarAvatarMedico,
@@ -29,7 +36,7 @@ const ACCIONES_DISPONIBLES = [
     aplica: puedeRegistrarDiagnostico,
   },
   {
-    ruta: 'cancelar-cita', texto: 'Cancelar cita', iconoAccion: 'cancelar', variante: 'peligro-suave',
+    accion: 'cancelar-cita', roles: ['paciente', 'administrador'], texto: 'Cancelar cita', iconoAccion: 'cancelar', variante: 'peligro-suave',
     aplica: puedeCancelarCita,
     regla: 'Cancelación: disponible antes de la atención. El reembolso depende del pago y de las 24 horas previas.',
   },
@@ -101,14 +108,17 @@ function renderizarLineaDeTiempo(eventos) {
 
 function renderizarAccion(cita, accion) {
   const contenido = `${icono(accion.iconoAccion)}${escaparHtml(accion.texto)}`;
-  const boton = accion.aplica(cita)
-    ? `<a class="boton boton--${accion.variante} boton--bloque" href="${construirHash(accion.ruta, { cita: cita.id })}">${contenido}</a>`
-    : `<button class="boton boton--${accion.variante} boton--bloque" type="button" disabled>${contenido}</button>`;
+  let boton = `<button class="boton boton--${accion.variante} boton--bloque" type="button" disabled>${contenido}</button>`;
+  if (accion.aplica(cita)) {
+    boton = accion.accion
+      ? `<button class="boton boton--${accion.variante} boton--bloque" type="button" data-accion="${accion.accion}">${contenido}</button>`
+      : `<a class="boton boton--${accion.variante} boton--bloque" href="${construirHash(accion.ruta, { cita: cita.id })}">${contenido}</a>`;
+  }
   return `${boton}${accion.regla ? `<p class="acciones-detalle__regla">${escaparHtml(accion.regla)}</p>` : ''}`;
 }
 
 function renderizarAcciones(cita, rol) {
-  const acciones = ACCIONES_DISPONIBLES.filter((accion) => puedeAcceder(accion.ruta, rol) && (accion.regla || accion.aplica(cita)));
+  const acciones = ACCIONES_DISPONIBLES.filter((accion) => (accion.roles ? accion.roles.includes(rol) : puedeAcceder(accion.ruta, rol)) && (accion.regla || accion.aplica(cita)));
   if (!acciones.length) return '';
   return `
     <section class="panel">
@@ -156,6 +166,54 @@ function renderizarInformacionDelPaciente(cita) {
     </section>`;
 }
 
+function renderizarAvisoDeReembolso(cita) {
+  const { hayPago, corresponde } = c_verificarReembolso(cita);
+  if (!hayPago) {
+    return renderizarAviso({ tipo: 'info', titulo: 'Sin pago registrado', mensaje: 'La cita se cancelará y el horario quedará libre. No se genera solicitud de reembolso.' });
+  }
+  return corresponde
+    ? renderizarAviso({ tipo: 'exito', titulo: 'Reembolso aplicable', mensaje: 'Faltan más de 24 horas. Se generará una solicitud de reembolso en estado Pendiente.' })
+    : renderizarAviso({ tipo: 'peligro', titulo: 'Pago no reembolsable', mensaje: 'Puedes cancelar la cita, pero al faltar 24 horas o menos el pago realizado no se reembolsa.' });
+}
+
+function renderizarAvisoDeCancelacion(cita) {
+  if (cita.estado !== ESTADOS_CITA.CANCELADA) return '';
+  const estadosDePago = {
+    [ESTADOS_PAGO.REEMBOLSO_PENDIENTE]: ' Se creó una solicitud de reembolso en estado Pendiente.',
+    [ESTADOS_PAGO.REEMBOLSADO]: ' El reembolso del pago fue procesado.',
+    [ESTADOS_PAGO.PAGADO]: ' El pago no es reembolsable por haberse cancelado con 24 horas o menos de anticipación.',
+  };
+  return renderizarAviso({ tipo: 'peligro', titulo: 'Cita cancelada', mensaje: `El horario fue liberado.${estadosDePago[cita.pago?.estado] ?? ''}` });
+}
+
+async function solicitarCancelacion(citaId, { rol, usuario }) {
+  const { cita, valida } = c_validarCancelacion(citaId);
+  if (!valida) {
+    mostrarToast('La cita ya no puede cancelarse.', 'error');
+    return;
+  }
+  const confirmado = await confirmarAccion({
+    titulo: 'Cancelar cita',
+    mensaje: '¿Confirmas que deseas cancelar esta cita? El estado cambiará a Cancelada y el horario será liberado.',
+    detalle: `
+      <dl class="lista-datos lista-datos--apilada">
+        <div><dt>Médico</dt><dd>${escaparHtml(cita.medico?.nombre ?? '')}</dd></div>
+        <div><dt>Fecha</dt><dd>${escaparHtml(formatearFechaLarga(cita.fecha))}, ${escaparHtml(cita.hora)}</dd></div>
+        <div><dt>Lugar</dt><dd>${escaparHtml(cita.consultorio)}</dd></div>
+      </dl>
+      ${renderizarAvisoDeReembolso(cita)}`,
+    textoConfirmar: 'Sí, cancelar cita',
+    textoCancelar: 'Volver',
+    peligro: true,
+  });
+  if (!confirmado) return;
+  try {
+    c_registrarCancelacion({ citaId, actor: usuario.nombre, rol });
+  } catch (error) {
+    mostrarToast(error.message, 'error');
+  }
+}
+
 function renderizarDetalle(cita, rol) {
   const avisoPago = cita.estado === ESTADOS_CITA.PENDIENTE_PAGO && cita.pago
     ? renderizarAviso({ tipo: 'alerta', titulo: 'Pago pendiente', mensaje: `Completa el pago antes del ${formatearMomento(cita.pago.fechaLimite)} para confirmar la cita; de lo contrario, el horario será liberado.` })
@@ -187,6 +245,7 @@ function renderizarDetalle(cita, rol) {
           ${renderizarFila('usuario', 'Paciente', `${escaparHtml(cita.paciente?.nombre ?? '')} <small>DNI ${escaparHtml(cita.paciente?.dni ?? '')}</small>`)}
           ${renderizarFila('documento', 'Motivo', escaparHtml(cita.motivo || 'Sin motivo registrado'))}
         </section>
+        ${renderizarAvisoDeCancelacion(cita)}
         ${avisoPago}
         ${rol === 'medico' ? renderizarInformacionDelPaciente(cita) : ''}
         ${renderizarDiagnostico(cita.diagnostico)}
@@ -224,7 +283,11 @@ export default {
   icono: 'documento',
   roles: ['paciente', 'medico', 'administrador'],
   menu: false,
-  montar(contenedor, { params, rol, sesion }) {
+  montar(contenedor, { params, rol, sesion, usuario }) {
+    contenedor.addEventListener('click', (evento) => {
+      if (evento.target.closest('[data-accion="cancelar-cita"]')) solicitarCancelacion(params.id, { rol, usuario });
+    });
+
     const renderizar = () => {
       const cita = params.id ? obtenerCitaDetallada(params.id) : null;
       if (!cita) {

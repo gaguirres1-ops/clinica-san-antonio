@@ -51,6 +51,7 @@ const VARIANTES_POR_ESTADO = {
   Cancelada: 'peligro',
   Pendiente: 'alerta',
   Pagado: 'exito',
+  'Reembolso pendiente': 'alerta',
   Reembolsado: 'neutro',
   disponible: 'exito',
   ocupado: 'info',

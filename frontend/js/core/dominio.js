@@ -24,6 +24,7 @@ export const ESTADOS_HORARIO = Object.freeze({
 export const ESTADOS_PAGO = Object.freeze({
   PENDIENTE: 'Pendiente',
   PAGADO: 'Pagado',
+  REEMBOLSO_PENDIENTE: 'Reembolso pendiente',
   REEMBOLSADO: 'Reembolsado',
 });
 
